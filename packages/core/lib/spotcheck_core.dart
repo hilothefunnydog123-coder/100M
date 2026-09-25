@@ -8,6 +8,7 @@ library;
 export 'src/body_site.dart';
 export 'src/check_request.dart';
 export 'src/check_result.dart';
+export 'src/demo_assessments.dart';
 export 'src/doctor_summary.dart';
 export 'src/ids.dart';
 export 'src/intake.dart';
