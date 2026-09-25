@@ -62,8 +62,9 @@ jobs in the app today):
 | Pro | $79/mo per company | Unlimited quotes, up to 3 users |
 | Crew | $149/mo | More users, team features (later) |
 
-Later revenue: a take rate on deposits once payments are built in (Stripe
-Connect), customer-financing referral fees on larger jobs, and supplier
+Take rate: customers can pay deposits by card through Stripe Connect;
+Jobwalk keeps 1% of each deposit (card fees are passed through). Later:
+customer-financing referral fees on larger jobs, and supplier
 partnerships.
 
 **The $10M target in plain math:** $10M ARR at $79/month is about 10,500
