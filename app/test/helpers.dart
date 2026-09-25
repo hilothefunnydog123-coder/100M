@@ -5,11 +5,16 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:jobwalk/app.dart';
 import 'package:jobwalk/config.dart';
 import 'package:jobwalk/data/blob_store.dart';
+import 'package:jobwalk/data/session.dart';
 import 'package:jobwalk/data/settings.dart';
+import 'package:jobwalk/data/sync_state.dart';
 import 'package:jobwalk/services/api.dart';
 import 'package:jobwalk/services/photos.dart';
 import 'package:jobwalk/state/providers.dart';
+import 'package:jobwalk/state/session.dart';
 import 'package:jobwalk_core/jobwalk_core.dart';
+
+import 'fake_backend.dart';
 
 final testNow = DateTime.utc(2026, 9, 25, 15);
 
@@ -40,7 +45,11 @@ class TestClient extends DemoJobwalkClient {
   AiDraft? nextDraft;
 
   @override
-  Future<DraftResult> draft(DraftRequest request, {SampleJob? sample}) async {
+  Future<DraftResult> draft(
+    DraftRequest request, {
+    SampleJob? sample,
+    String? idempotencyKey,
+  }) async {
     draftRequests.add(request);
     final error = failNext;
     if (error != null) {
@@ -116,6 +125,61 @@ Future<TestApp> pumpApp(
   );
   await tester.pumpAndSettle();
   return TestApp(container, client);
+}
+
+/// The whole app signed in (or not) to [backend], as a real build with
+/// API_BASE_URL runs.
+Future<ProviderContainer> pumpConnectedApp(
+  WidgetTester tester,
+  FakeBackend backend, {
+  bool signedIn = false,
+  AppSettings? settings,
+  List<Quote> quotes = const [],
+}) async {
+  tester.view.physicalSize = const Size(1170, 2532);
+  tester.view.devicePixelRatio = 3;
+  addTearDown(tester.view.reset);
+  tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+    SystemChannels.platform,
+    (call) async {
+      if (call.method == 'Clipboard.setData') {
+        clipboard = (call.arguments as Map)['text'] as String?;
+      }
+      return null;
+    },
+  );
+  final store = MemoryBlobStore();
+  final tokens = MemoryTokenStore(signedIn ? FakeBackend.token : null);
+  final container = ProviderContainer(
+    overrides: [
+      configProvider.overrideWithValue(
+        AppConfig(
+          apiBaseUrl: Uri.parse('https://api.jobwalk.test'),
+          demoMode: false,
+        ),
+      ),
+      blobStoreProvider.overrideWithValue(store),
+      initialSettingsProvider.overrideWithValue(
+        settings ?? testSettings(setupDone: false),
+      ),
+      initialQuotesProvider.overrideWithValue(quotes),
+      tokenStoreProvider.overrideWithValue(tokens),
+      initialTokenProvider.overrideWithValue(tokens.token),
+      initialSyncStateProvider.overrideWithValue(
+        signedIn ? const SyncState(businessId: 'b_1') : const SyncState(),
+      ),
+      httpClientProvider.overrideWithValue(backend.client),
+      clockProvider.overrideWithValue(() => testNow),
+      photoSourceProvider.overrideWithValue(FakePhotoSource()),
+      photoProcessorProvider.overrideWithValue(fakeProcess),
+    ],
+  );
+  addTearDown(container.dispose);
+  await tester.pumpWidget(
+    UncontrolledProviderScope(container: container, child: const JobwalkApp()),
+  );
+  await tester.pumpAndSettle();
+  return container;
 }
 
 /// The vertical list on top: a sheet's list if one is open, else the page's.

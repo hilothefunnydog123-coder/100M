@@ -6,8 +6,10 @@ import 'package:jobwalk_core/jobwalk_core.dart';
 
 import '../../services/api.dart';
 import '../../state/providers.dart';
+import '../../state/session.dart';
 import '../../theme/colors.dart';
 import '../../util/format.dart';
+import '../account/plans_sheet.dart';
 import '../quote/quote_screen.dart';
 import 'capture_screen.dart';
 
@@ -34,7 +36,12 @@ class _BuildingScreenState extends ConsumerState<BuildingScreen>
   var _phase = _Phase.working;
   var _message = '';
   var _retryable = true;
+  var _upgrade = false;
   var _attempt = 0;
+
+  /// One key for this set of photos: if the phone gives up waiting and
+  /// retries, the server returns the draft it already made.
+  final _idempotencyKey = newId('draft', length: 24);
 
   @override
   void initState() {
@@ -78,6 +85,7 @@ class _BuildingScreenState extends ConsumerState<BuildingScreen>
               ],
             ),
             sample: capture.sample,
+            idempotencyKey: _idempotencyKey,
           );
       if (attempt != _attempt || !mounted) return;
       if (!result.draft.isUsable) {
@@ -116,6 +124,7 @@ class _BuildingScreenState extends ConsumerState<BuildingScreen>
     } on ApiError catch (e) {
       if (attempt != _attempt || !mounted) return;
       _retryable = e.retryable;
+      _upgrade = e.code == 'upgrade_required';
       _finish(_Phase.failed, e.message);
     }
   }
@@ -253,7 +262,28 @@ class _BuildingScreenState extends ConsumerState<BuildingScreen>
                   style: text.bodyLarge?.copyWith(color: onDarkMuted),
                 ),
                 const SizedBox(height: 24),
-                if (_retryable)
+                if (_upgrade)
+                  FilledButton(
+                    onPressed: () async {
+                      await showPlans(context);
+                      // Paid on Stripe and came back: pick up the plan.
+                      try {
+                        await ref.read(sessionProvider.notifier).refresh();
+                      } on ApiError {
+                        return;
+                      }
+                      final plan = ref
+                          .read(sessionProvider)
+                          .account
+                          ?.business
+                          .plan;
+                      if (plan != null && plan.paid && mounted) {
+                        unawaited(_run());
+                      }
+                    },
+                    child: const Text('See plans'),
+                  )
+                else if (_retryable)
                   FilledButton(onPressed: _run, child: const Text('Try again')),
                 const SizedBox(height: 10),
                 OutlinedButton(

@@ -8,6 +8,7 @@ import '../../services/api.dart';
 import '../../services/launcher.dart';
 import '../../state/providers.dart';
 import '../../state/quote_actions.dart';
+import '../../state/sync.dart';
 import '../../theme/colors.dart';
 import '../../util/format.dart';
 import '../widgets/common.dart';
@@ -333,6 +334,7 @@ class _StatusCard extends ConsumerWidget {
     final share = quote.share!;
     final r = quote.response;
     final profile = ref.watch(settingsProvider.select((s) => s.profile));
+    final deposit = ref.watch(depositPaidProvider(quote.id));
     final steps = <(IconData, String, Tone)>[
       (
         Icons.send_rounded,
@@ -352,6 +354,12 @@ class _StatusCard extends ConsumerWidget {
           Icons.check_circle_rounded,
           'Approved${quote.tier(quote.chosenTierId) == null ? '' : ': ${quote.tier(quote.chosenTierId)!.name}'}'
               '${r.signature.isEmpty ? '' : ', signed by ${r.signature}'}',
+          c.ok,
+        ),
+      if (deposit != null)
+        (
+          Icons.payments_rounded,
+          'Deposit of ${Money.format(deposit)} paid by card',
           c.ok,
         ),
       if (quote.status == QuoteStatus.declined)

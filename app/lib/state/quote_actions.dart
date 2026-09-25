@@ -3,6 +3,7 @@ import 'package:jobwalk_core/jobwalk_core.dart';
 
 import '../services/api.dart';
 import 'providers.dart';
+import 'sync.dart';
 
 /// Multi-step operations on a quote that talk to the server.
 class QuoteActions {
@@ -16,7 +17,6 @@ class QuoteActions {
   /// the first time, and pushes a revision after edits. Returns the quote
   /// with its link.
   Future<Quote> publish(Quote quote) async {
-    final client = ref.read(clientProvider);
     final settings = ref.read(settingsProvider);
     final now = ref.read(clockProvider)();
     final public = PublicQuote.fromQuote(
@@ -26,6 +26,14 @@ class QuoteActions {
     );
     final problem = public.validate();
     if (problem != null) throw ApiError(problem, retryable: false);
+
+    final client = ref.read(clientProvider);
+    if (client is! DemoJobwalkClient) {
+      // The server builds the page from the synced quote and profile.
+      final sent = await ref.read(syncProvider.notifier).publish(quote);
+      await ref.read(settingsProvider.notifier).learnFrom(sent);
+      return sent;
+    }
 
     final share = quote.share;
     ShareInfo newShare;
@@ -101,13 +109,17 @@ class QuoteActions {
     return copy;
   }
 
-  /// Refreshes one quote's status from the server.
+  /// Refreshes one quote's status: a sync when signed in, else the demo
+  /// link on this phone.
   Future<void> refresh(Quote quote) async {
+    final client = ref.read(clientProvider);
+    if (client is! DemoJobwalkClient) {
+      await ref.read(syncProvider.notifier).sync();
+      return;
+    }
     final share = quote.share;
     if (share == null) return;
-    final response = await ref
-        .read(clientProvider)
-        .status(share.publicId, share.ownerToken);
+    final response = await client.status(share.publicId, share.ownerToken);
     final current = _quotes.byId(quote.id);
     if (current == null) return;
     await _quotes.save(current.applyResponse(response), touch: false);

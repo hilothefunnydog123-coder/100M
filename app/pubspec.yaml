@@ -10,6 +10,7 @@ dependencies:
   flutter:
     sdk: flutter
   flutter_riverpod: ^3.4.3
+  flutter_secure_storage: ^11.2.0
   http: ^1.6.0
   image_picker: ^1.2.3
   jobwalk_core:

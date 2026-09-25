@@ -26,12 +26,17 @@ S3 bucket, and optionally Stripe.
       (iOS project, `android/app/build.gradle.kts`).
 - [ ] Build against the server:
       `flutter build ipa --dart-define=API_BASE_URL=https://api.jobwalk.app`
-      (and `flutter build appbundle` for Android).
+      (and `flutter build appbundle` for Android). The session token is
+      kept in the Keychain / Keystore.
+- [ ] Give app reviewers the review account (`JOBWALK_REVIEW_EMAIL` and
+      its fixed code); sign-in is by emailed code only.
 - [ ] Android release signing; Apple team and provisioning.
 - [ ] Privacy policy and terms at the URLs in `app/lib/config.dart`. The
-      policy should say: photos go to the Jobwalk server and Anthropic's
-      API to draft the quote, and Jobwalk doesn't store them; published
-      quotes store only what the customer sees.
+      policy should say: job photos are sent to Anthropic's API to draft
+      the quote and are stored in the business's account so the whole crew
+      sees them; quotes, photos, and customer responses are deleted with the
+      quote or the account; approvals keep an audit record (name, time, IP
+      address, browser) for the contractor.
 - [ ] Store listings: screenshots of the capture, quote, and customer
       pages. Camera and photo-library permission text is already set.
 - [ ] TestFlight and Play internal testing for the beta cohort.

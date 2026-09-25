@@ -48,13 +48,18 @@ cd app
 flutter run -d chrome        # or an iOS simulator / Android emulator
 ```
 
-The backend (Postgres and the API with sample drafts, no API key needed):
+With the backend (Postgres and the API with sample drafts, no API key
+needed):
 
 ```sh
 docker compose up --build        # http://localhost:8080
+cd app
+flutter run -d chrome --dart-define=API_BASE_URL=http://localhost:8080
 ```
 
-Sign-in codes are printed in the API's log (`EMAIL_PROVIDER=log`). The
+Sign in with any email address; the code is printed in the API's log
+(`docker compose logs api`). Quotes then sync to the account, links are
+served by the API, and the customer page at `/q/<id>` is the real one. The
 landing page is at `/` and a sample customer quote at `/sample`. For real drafts, set `ANTHROPIC_API_KEY` and drop
 `JOBWALK_FAKE_MODEL`. Deploying: [docs/DEPLOY.md](docs/DEPLOY.md).
 

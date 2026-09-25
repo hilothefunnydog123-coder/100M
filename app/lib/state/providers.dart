@@ -1,14 +1,20 @@
+import 'dart:convert';
+import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:http/http.dart' as http;
 import 'package:jobwalk_core/jobwalk_core.dart';
 
 import '../config.dart';
 import '../data/blob_store.dart';
 import '../data/repositories.dart';
 import '../data/settings.dart';
+import '../data/sync_state.dart';
 import '../services/api.dart';
 import '../services/photos.dart';
+import 'session.dart';
+import 'sync.dart';
 
 final configProvider = Provider<AppConfig>(
   (ref) => AppConfig.fromEnvironment(),
@@ -38,6 +44,16 @@ final settingsRepositoryProvider = Provider(
 final quoteRepositoryProvider = Provider(
   (ref) => QuoteRepository(ref.watch(blobStoreProvider)),
 );
+final syncStateRepositoryProvider = Provider(
+  (ref) => SyncStateRepository(ref.watch(blobStoreProvider)),
+);
+
+/// Shared HTTP client; replaced in tests.
+final httpClientProvider = Provider<http.Client>((ref) {
+  final client = http.Client();
+  ref.onDispose(client.close);
+  return client;
+});
 
 class SettingsNotifier extends Notifier<AppSettings> {
   @override
@@ -48,29 +64,51 @@ class SettingsNotifier extends Notifier<AppSettings> {
     await ref.read(settingsRepositoryProvider).save(state);
   }
 
-  Future<void> completeSetup(BusinessProfile profile, Rates rates) => _update(
+  Future<void> completeSetup(BusinessProfile profile, Rates rates) async {
+    await _update(
+      (s) => s.copyWith(profile: profile, rates: rates, setupDone: true),
+    );
+    ref.read(syncProvider.notifier).businessChanged();
+  }
+
+  Future<void> setProfile(BusinessProfile profile) async {
+    await _update((s) => s.copyWith(profile: profile));
+    ref.read(syncProvider.notifier).businessChanged();
+  }
+
+  Future<void> setRates(Rates rates) async {
+    await _update((s) => s.copyWith(rates: rates));
+    ref.read(syncProvider.notifier).businessChanged();
+  }
+
+  /// The business as the server has it (edited on another phone, or by
+  /// the owner). Not sent back.
+  Future<void> applyServer(BusinessProfile profile, Rates rates) => _update(
     (s) => s.copyWith(profile: profile, rates: rates, setupDone: true),
   );
 
-  Future<void> setProfile(BusinessProfile profile) =>
-      _update((s) => s.copyWith(profile: profile));
-
-  Future<void> setRates(Rates rates) =>
-      _update((s) => s.copyWith(rates: rates));
-
   /// Hands out the next quote number.
   Future<int> takeNumber() async {
-    final n = state.nextNumber;
-    await _update((s) => s.copyWith(nextNumber: n + 1));
+    final sync = ref.read(syncProvider.notifier);
+    final n = sync.enabled
+        ? await sync.takeNumber(state.nextNumber)
+        : state.nextNumber;
+    await _update((s) => s.copyWith(nextNumber: max(s.nextNumber, n + 1)));
     return n;
   }
 
   /// Remembers prices the contractor typed over AI lines.
-  Future<void> learnFrom(Quote sent) => _update(
-    (s) => s.copyWith(
-      rates: PriceMemory.learn(s.rates, sent, now: ref.read(clockProvider)()),
-    ),
-  );
+  Future<void> learnFrom(Quote sent) async {
+    final learned = PriceMemory.learn(
+      state.rates,
+      sent,
+      now: ref.read(clockProvider)(),
+    );
+    if (jsonEncode(learned.toJson()) == jsonEncode(state.rates.toJson())) {
+      return;
+    }
+    await setRates(learned);
+  }
 
   /// Keeps the install id so rate limits can't be reset by erasing data.
   Future<void> reset() async {
@@ -100,8 +138,9 @@ class QuotesNotifier extends Notifier<List<Quote>> {
     for (final (i, key) in quote.photoKeys.indexed) {
       if (i < photos.length) await _repo.savePhoto(key, photos[i]);
     }
-    state = [quote, ...state];
+    state = _sorted([quote, ...state]);
     await _repo.save(state);
+    ref.read(syncProvider.notifier).quoteChanged(quote.id);
   }
 
   /// Stores an edited quote. Edits bump `updatedAt` so a sent link knows it
@@ -112,12 +151,30 @@ class QuotesNotifier extends Notifier<List<Quote>> {
         : quote;
     state = [for (final q in state) q.id == saved.id ? saved : q];
     await _repo.save(state);
+    ref.read(syncProvider.notifier).quoteChanged(saved.id);
     return saved;
   }
 
   Future<void> delete(String id) async {
+    if (!await _remove(id)) return;
+    ref.read(syncProvider.notifier).quoteDeleted(id);
+  }
+
+  /// A quote as the server has it. Not sent back.
+  Future<void> applyRemote(Quote quote) async {
+    final exists = state.any((q) => q.id == quote.id);
+    state = exists
+        ? [for (final q in state) q.id == quote.id ? quote : q]
+        : _sorted([quote, ...state]);
+    await _repo.save(state);
+  }
+
+  /// Deleted on another phone.
+  Future<void> removeRemote(String id) => _remove(id);
+
+  Future<bool> _remove(String id) async {
     final quote = byId(id);
-    if (quote == null) return;
+    if (quote == null) return false;
     state = [
       for (final q in state)
         if (q.id != id) q,
@@ -126,12 +183,34 @@ class QuotesNotifier extends Notifier<List<Quote>> {
     // Duplicates share photos; only delete ones nothing else uses.
     final inUse = {for (final q in state) ...q.photoKeys};
     await _repo.deletePhotos(quote.photoKeys.where((k) => !inUse.contains(k)));
+    return true;
+  }
+
+  /// Removes every quote and photo from this phone (signing out).
+  Future<void> clearLocal() async {
+    await _repo.deletePhotos({for (final q in state) ...q.photoKeys});
+    state = const [];
+    await _repo.save(state);
+  }
+
+  static List<Quote> _sorted(List<Quote> quotes) =>
+      quotes..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+  /// Brings statuses up to date: a sync when signed in, else the demo
+  /// links on this phone.
+  Future<void> refresh() async {
+    if (ref.read(syncProvider.notifier).enabled) {
+      await ref.read(syncProvider.notifier).sync();
+    } else {
+      await refreshStatuses();
+    }
   }
 
   /// Pulls what customers did with sent quotes. Quiet on failure: this runs
   /// in the background and the next refresh will catch up.
   Future<int> refreshStatuses() async {
     final client = ref.read(clientProvider);
+    if (client is! DemoJobwalkClient) return 0;
     var changed = 0;
     for (final q in [...state]) {
       final share = q.share;
@@ -172,19 +251,26 @@ final quoteProvider = Provider.family<Quote?, String>((ref, id) {
   return null;
 });
 
-final storedPhotoProvider = FutureProvider.family<Uint8List?, String>(
-  (ref, key) => ref.watch(quoteRepositoryProvider).loadPhoto(key),
-);
+/// A job photo from this phone, or from the server when another phone
+/// took it (then kept here).
+final storedPhotoProvider = FutureProvider.family<Uint8List?, String>((
+  ref,
+  key,
+) async {
+  final repo = ref.watch(quoteRepositoryProvider);
+  final local = await repo.loadPhoto(key);
+  if (local != null) return local;
+  final server = ref.read(serverProvider);
+  if (server == null || !ref.read(sessionProvider).signedIn) return null;
+  final remote = await server.getPhoto(key);
+  if (remote != null) await repo.savePhoto(key, remote);
+  return remote;
+});
 
 final clientProvider = Provider<JobwalkClient>((ref) {
-  final config = ref.watch(configProvider);
-  if (config.demoMode) {
-    return DemoJobwalkClient(store: ref.watch(blobStoreProvider));
-  }
-  return HttpJobwalkClient(
-    baseUrl: config.apiBaseUrl!,
-    installId: ref.watch(settingsProvider.select((s) => s.installId)),
-  );
+  final server = ref.watch(serverProvider);
+  if (server != null) return server;
+  return DemoJobwalkClient(store: ref.watch(blobStoreProvider));
 });
 
 final photoSourceProvider = Provider<PhotoSource>(

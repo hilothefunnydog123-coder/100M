@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:jobwalk_core/jobwalk_core.dart';
 
 import '../../state/providers.dart';
+import '../../state/session.dart';
+import '../../state/sync.dart';
 import '../../theme/colors.dart';
 import '../../util/format.dart';
 import '../capture/capture_screen.dart';
@@ -45,7 +47,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     super.initState();
     // Catch up on views and approvals since the app was last open.
     WidgetsBinding.instance.addPostFrameCallback(
-      (_) => unawaited(ref.read(quotesProvider.notifier).refreshStatuses()),
+      (_) => unawaited(ref.read(quotesProvider.notifier).refresh()),
     );
   }
 
@@ -91,10 +93,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       ),
       body: RefreshIndicator(
         color: c.accent,
-        onRefresh: () => ref.read(quotesProvider.notifier).refreshStatuses(),
+        onRefresh: () async {
+          final session = ref.read(sessionProvider.notifier);
+          await Future.wait([
+            ref.read(quotesProvider.notifier).refresh(),
+            session.refresh().catchError((Object _) {}),
+          ]);
+        },
         child: CustomScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
+            const SliverToBoxAdapter(child: _SyncBanner()),
             if (demo)
               SliverToBoxAdapter(
                 child: Padding(
@@ -414,6 +423,38 @@ class _EmptyState extends StatelessWidget {
                 ),
             ],
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Says so when changes are waiting for a connection.
+class _SyncBanner extends ConsumerWidget {
+  const _SyncBanner();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final status = ref.watch(syncProvider);
+    final text = Theme.of(context).textTheme;
+    final c = JobColors.of(context);
+    final String? message = switch (status.phase) {
+      SyncPhase.offline =>
+        status.pending == 0
+            ? "Offline. Customer updates will show when you're back online."
+            : "Offline. ${status.pending == 1 ? 'One change' : '${status.pending} changes'} "
+                  "will sync when you're back online.",
+      SyncPhase.failed => "Couldn't sync: ${status.error ?? 'try again.'}",
+      _ => null,
+    };
+    if (message == null) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+      child: Row(
+        children: [
+          Icon(Icons.cloud_off_rounded, size: 16, color: c.inkMuted),
+          const SizedBox(width: 8),
+          Expanded(child: Text(message, style: text.bodySmall)),
         ],
       ),
     );

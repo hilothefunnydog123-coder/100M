@@ -2,11 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:jobwalk_core/jobwalk_core.dart';
 
+import '../../services/api.dart';
 import '../../services/launcher.dart';
+import '../../services/models.dart';
+import '../../state/account.dart';
 import '../../state/providers.dart';
+import '../../state/session.dart';
+import '../../state/sync.dart';
 import '../../theme/colors.dart';
 import '../../util/format.dart';
+import '../account/plans_sheet.dart';
 import '../widgets/common.dart';
+
+part 'account_settings.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -21,12 +29,18 @@ class SettingsScreen extends ConsumerWidget {
     final text = Theme.of(context).textTheme;
     final notifier = ref.read(settingsProvider.notifier);
     final learned = r.priceList.where((e) => e.learned).length;
+    final signedIn = ref.watch(sessionProvider.select((s) => s.signedIn));
+    // Members use the business's profile and prices; the owner sets them.
+    final canEdit =
+        !signedIn || ref.watch(sessionProvider.select((s) => s.isOwner));
+    final sync = ref.watch(syncProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 40),
         children: [
+          if (signedIn) const _AccountSettings(),
           const SectionLabel('Business'),
           _Group(
             children: [
@@ -38,13 +52,15 @@ class SettingsScreen extends ConsumerWidget {
                   if (p.email.isNotEmpty) p.email,
                   if (p.license.isNotEmpty) 'License ${p.license}',
                 ].where((s) => s.isNotEmpty).join(' · '),
-                onTap: () async {
-                  final updated = await showAppSheet<BusinessProfile>(
-                    context,
-                    builder: (_) => _BusinessForm(p),
-                  );
-                  if (updated != null) await notifier.setProfile(updated);
-                },
+                onTap: !canEdit
+                    ? null
+                    : () async {
+                        final updated = await showAppSheet<BusinessProfile>(
+                          context,
+                          builder: (_) => _BusinessForm(p),
+                        );
+                        if (updated != null) await notifier.setProfile(updated);
+                      },
               ),
             ],
           ),
@@ -63,33 +79,45 @@ class SettingsScreen extends ConsumerWidget {
                     'Tax ${trimNumber(r.taxRatePct, decimals: 3)}%',
                   'Valid ${r.validDays} days',
                 ].join(' · '),
-                onTap: () async {
-                  final updated = await showAppSheet<Rates>(
-                    context,
-                    builder: (_) => _RatesForm(r),
-                  );
-                  if (updated != null) await notifier.setRates(updated);
-                },
+                onTap: !canEdit
+                    ? null
+                    : () async {
+                        final updated = await showAppSheet<Rates>(
+                          context,
+                          builder: (_) => _RatesForm(r),
+                        );
+                        if (updated != null) await notifier.setRates(updated);
+                      },
               ),
             ],
           ),
+          if (!canEdit)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(4, 8, 4, 0),
+              child: Text(
+                'The account owner sets the business details and prices.',
+                style: text.bodySmall,
+              ),
+            ),
           SectionLabel(
             'Your prices',
-            trailing: TextButton.icon(
-              onPressed: () async {
-                final entry = await showAppSheet<PriceEntry>(
-                  context,
-                  builder: (_) => const _PriceForm(null),
-                );
-                if (entry != null) {
-                  await notifier.setRates(
-                    r.copyWith(priceList: [...r.priceList, entry]),
-                  );
-                }
-              },
-              icon: const Icon(Icons.add_rounded, size: 18),
-              label: const Text('Add'),
-            ),
+            trailing: !canEdit
+                ? null
+                : TextButton.icon(
+                    onPressed: () async {
+                      final entry = await showAppSheet<PriceEntry>(
+                        context,
+                        builder: (_) => const _PriceForm(null),
+                      );
+                      if (entry != null) {
+                        await notifier.setRates(
+                          r.copyWith(priceList: [...r.priceList, entry]),
+                        );
+                      }
+                    },
+                    icon: const Icon(Icons.add_rounded, size: 18),
+                    label: const Text('Add'),
+                  ),
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(4, 0, 4, 10),
@@ -120,24 +148,26 @@ class SettingsScreen extends ConsumerWidget {
                       ' / ${e.unit.isLumpSum ? 'job' : e.unit.singular}',
                       style: text.titleSmall,
                     ),
-                    onTap: () async {
-                      final updated = await showAppSheet<PriceEntry>(
-                        context,
-                        builder: (_) => _PriceForm(e),
-                      );
-                      if (updated == null) return;
-                      await notifier.setRates(
-                        r.copyWith(
-                          priceList: [
-                            for (final x in r.priceList)
-                              if (x.id != e.id)
-                                x
-                              else if (updated.name.isNotEmpty)
-                                updated,
-                          ],
-                        ),
-                      );
-                    },
+                    onTap: !canEdit
+                        ? null
+                        : () async {
+                            final updated = await showAppSheet<PriceEntry>(
+                              context,
+                              builder: (_) => _PriceForm(e),
+                            );
+                            if (updated == null) return;
+                            await notifier.setRates(
+                              r.copyWith(
+                                priceList: [
+                                  for (final x in r.priceList)
+                                    if (x.id != e.id)
+                                      x
+                                    else if (updated.name.isNotEmpty)
+                                      updated,
+                                ],
+                              ),
+                            );
+                          },
                   ),
               ],
             ),
@@ -152,41 +182,47 @@ class SettingsScreen extends ConsumerWidget {
                     ? 'A Stripe, Square, or PayPal payment link. Customers '
                           'see a Pay deposit button after approving.'
                     : p.paymentLink,
-                onTap: () async {
-                  final link = await showAppSheet<String>(
-                    context,
-                    builder: (_) => _TextForm(
-                      title: 'Deposit link',
-                      label: 'https://',
-                      initial: p.paymentLink,
-                      keyboard: TextInputType.url,
-                      validate: (v) => v.isEmpty || safeLink(v).isNotEmpty
-                          ? null
-                          : 'Use a full https:// link.',
-                    ),
-                  );
-                  if (link != null) {
-                    await notifier.setProfile(p.copyWith(paymentLink: link));
-                  }
-                },
+                onTap: !canEdit
+                    ? null
+                    : () async {
+                        final link = await showAppSheet<String>(
+                          context,
+                          builder: (_) => _TextForm(
+                            title: 'Deposit link',
+                            label: 'https://',
+                            initial: p.paymentLink,
+                            keyboard: TextInputType.url,
+                            validate: (v) => v.isEmpty || safeLink(v).isNotEmpty
+                                ? null
+                                : 'Use a full https:// link.',
+                          ),
+                        );
+                        if (link != null) {
+                          await notifier.setProfile(
+                            p.copyWith(paymentLink: link),
+                          );
+                        }
+                      },
               ),
               _Row(
                 title: 'Terms on every quote',
                 subtitle: p.terms,
-                onTap: () async {
-                  final terms = await showAppSheet<String>(
-                    context,
-                    builder: (_) => _TextForm(
-                      title: 'Terms',
-                      label: 'Terms',
-                      initial: p.terms,
-                      lines: 5,
-                    ),
-                  );
-                  if (terms != null) {
-                    await notifier.setProfile(p.copyWith(terms: terms));
-                  }
-                },
+                onTap: !canEdit
+                    ? null
+                    : () async {
+                        final terms = await showAppSheet<String>(
+                          context,
+                          builder: (_) => _TextForm(
+                            title: 'Terms',
+                            label: 'Terms',
+                            initial: p.terms,
+                            lines: 5,
+                          ),
+                        );
+                        if (terms != null) {
+                          await notifier.setProfile(p.copyWith(terms: terms));
+                        }
+                      },
               ),
             ],
           ),
@@ -194,52 +230,69 @@ class SettingsScreen extends ConsumerWidget {
           _Group(
             children: [
               _Row(
-                title: config.demoMode ? 'Demo mode' : 'Connected',
+                title: config.demoMode ? 'Demo mode' : 'Sync',
                 subtitle: config.demoMode
                     ? 'Drafts come from sample jobs and links stay on this '
                           'phone. Build with API_BASE_URL to quote real jobs.'
-                    : config.apiBaseUrl.toString(),
+                    : _syncText(sync),
+                onTap: config.demoMode
+                    ? null
+                    : () => ref.read(syncProvider.notifier).sync(),
               ),
               _Row(
                 title: 'Privacy policy',
                 onTap: () => openLink(config.privacyPolicyUrl),
               ),
-              _Row(
-                title: 'Erase all data',
-                titleColor: c.danger.fg,
-                onTap: () async {
-                  final ok = await showDialog<bool>(
-                    context: context,
-                    builder: (context) => AlertDialog(
-                      title: const Text('Erase everything?'),
-                      content: const Text(
-                        'This deletes every quote, photo, and setting on '
-                        'this phone. Links you sent keep working.',
+              if (!signedIn)
+                _Row(
+                  title: 'Erase all data',
+                  titleColor: c.danger.fg,
+                  onTap: () async {
+                    final ok = await showDialog<bool>(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: const Text('Erase everything?'),
+                        content: const Text(
+                          'This deletes every quote, photo, and setting on '
+                          'this phone. Links you sent keep working.',
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context, false),
+                            child: const Text('Cancel'),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.pop(context, true),
+                            child: const Text('Erase'),
+                          ),
+                        ],
                       ),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(context, false),
-                          child: const Text('Cancel'),
-                        ),
-                        TextButton(
-                          onPressed: () => Navigator.pop(context, true),
-                          child: const Text('Erase'),
-                        ),
-                      ],
-                    ),
-                  );
-                  if (ok != true || !context.mounted) return;
-                  Navigator.of(context).popUntil((r) => r.isFirst);
-                  await ref.read(quotesProvider.notifier).clearAll();
-                  await notifier.reset();
-                },
-              ),
+                    );
+                    if (ok != true || !context.mounted) return;
+                    Navigator.of(context).popUntil((r) => r.isFirst);
+                    await ref.read(quotesProvider.notifier).clearAll();
+                    await notifier.reset();
+                  },
+                ),
             ],
           ),
+          if (signedIn) const _YourData(),
         ],
       ),
     );
   }
+}
+
+String _syncText(SyncStatus sync) {
+  final last = sync.lastSynced;
+  final when = last == null ? 'Not synced yet' : 'Synced ${formatTime(last)}';
+  return switch (sync.phase) {
+    SyncPhase.syncing => 'Syncing…',
+    SyncPhase.offline => 'Offline. ${sync.pending} waiting to sync.',
+    SyncPhase.failed => 'Sync failed: ${sync.error ?? 'try again'}',
+    SyncPhase.idle =>
+      sync.pending == 0 ? when : '$when · ${sync.pending} waiting',
+  };
 }
 
 class _Group extends StatelessWidget {

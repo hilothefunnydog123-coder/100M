@@ -1,8 +1,6 @@
-import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
-import 'package:http/http.dart' as http;
 import 'package:jobwalk_core/jobwalk_core.dart';
 
 import '../data/blob_store.dart';
@@ -31,178 +29,47 @@ class ShareResult {
 
 /// A failure the UI can explain to the contractor.
 class ApiError implements Exception {
-  const ApiError(this.message, {this.retryable = true, this.code = ''});
+  const ApiError(
+    this.message, {
+    this.retryable = true,
+    this.code = '',
+    this.status = 0,
+    this.offline = false,
+    this.details = const {},
+  });
 
   final String message;
   final bool retryable;
+
+  /// The server's stable error code, e.g. `upgrade_required`.
   final String code;
+
+  /// HTTP status, or 0 when the request never got an answer.
+  final int status;
+
+  /// No connection: the change will sync later.
+  final bool offline;
+
+  /// Extra fields from the error body, e.g. `current` on a conflict.
+  final Map<String, Object?> details;
 
   @override
   String toString() => message;
 }
 
-/// Everything the app asks of the Jobwalk server.
+/// Drafting quotes: the server (see `server.dart`), or samples in demo mode.
 abstract interface class JobwalkClient {
   /// Sample drafts and on-device links instead of the real server.
   bool get isDemo;
 
   /// Drafts a quote from photos. In demo mode, [sample] picks the canned
-  /// draft; the real server always looks at the photos.
-  Future<DraftResult> draft(DraftRequest request, {SampleJob? sample});
-
-  Future<ShareResult> publish(PublicQuote quote);
-
-  /// Replaces a sent quote with a revision. Returns the new revision.
-  Future<int> update(String id, String ownerToken, PublicQuote quote);
-
-  Future<CustomerResponse> status(String id, String ownerToken);
-}
-
-/// Talks to the Jobwalk API (see `server/`).
-class HttpJobwalkClient implements JobwalkClient {
-  HttpJobwalkClient({
-    required this.baseUrl,
-    required this.installId,
-    http.Client? client,
-    this.draftTimeout = const Duration(seconds: 190),
-    this.timeout = const Duration(seconds: 30),
-  }) : _client = client ?? http.Client();
-
-  final Uri baseUrl;
-  final String installId;
-  final Duration draftTimeout;
-  final Duration timeout;
-  final http.Client _client;
-
-  @override
-  bool get isDemo => false;
-
-  /// Keeps any path prefix on the base URL.
-  Uri endpoint(String path) => baseUrl.replace(
-    path: '${baseUrl.path.replaceAll(RegExp(r'/+$'), '')}$path',
-  );
-
-  Map<String, String> _headers({String? token}) => {
-    'content-type': 'application/json',
-    'x-install-id': installId,
-    if (token != null) 'authorization': 'Bearer $token',
-  };
-
-  @override
-  Future<DraftResult> draft(DraftRequest request, {SampleJob? sample}) async {
-    final json = await _send(
-      () => _client.post(
-        endpoint('/v1/drafts'),
-        headers: _headers(),
-        body: jsonEncode(request.toJson()),
-      ),
-      timeout: draftTimeout,
-    );
-    return DraftResult(
-      draft: AiDraft.fromJson(json['draft'] as Map<String, Object?>),
-      model: json['model'] as String? ?? '',
-      demo: json['demo'] == true,
-    );
-  }
-
-  @override
-  Future<ShareResult> publish(PublicQuote quote) async {
-    final json = await _send(
-      () => _client.post(
-        endpoint('/v1/quotes'),
-        headers: _headers(),
-        body: jsonEncode({'quote': quote.toJson()}),
-      ),
-    );
-    return ShareResult(
-      id: json['id']! as String,
-      url: json['url']! as String,
-      ownerToken: json['owner_token']! as String,
-      revision: (json['revision'] as num?)?.toInt() ?? 1,
-    );
-  }
-
-  @override
-  Future<int> update(String id, String ownerToken, PublicQuote quote) async {
-    final json = await _send(
-      () => _client.put(
-        endpoint('/v1/quotes/$id'),
-        headers: _headers(token: ownerToken),
-        body: jsonEncode({'quote': quote.toJson()}),
-      ),
-    );
-    return (json['revision'] as num?)?.toInt() ?? 1;
-  }
-
-  @override
-  Future<CustomerResponse> status(String id, String ownerToken) async {
-    final json = await _send(
-      () => _client.get(
-        endpoint('/v1/quotes/$id'),
-        headers: _headers(token: ownerToken),
-      ),
-    );
-    return CustomerResponse.fromJson(json['response']);
-  }
-
-  Future<Map<String, Object?>> _send(
-    Future<http.Response> Function() request, {
-    Duration? timeout,
-  }) async {
-    final http.Response response;
-    try {
-      response = await request().timeout(timeout ?? this.timeout);
-    } on TimeoutException {
-      throw const ApiError(
-        'This is taking longer than usual. Check your signal and try again.',
-      );
-    } on http.ClientException {
-      throw const ApiError(
-        "Can't reach Jobwalk. Check your signal and try again.",
-      );
-    }
-    Map<String, Object?>? body;
-    try {
-      final decoded = jsonDecode(utf8.decode(response.bodyBytes));
-      if (decoded is Map<String, Object?>) body = decoded;
-    } on FormatException {
-      body = null;
-    }
-    if (response.statusCode >= 200 && response.statusCode < 300) {
-      if (body == null) {
-        throw const ApiError('Got an unexpected response. Try again.');
-      }
-      return body;
-    }
-    final error = body?['error'];
-    final message = error is Map ? error['message'] as String? : null;
-    final code = error is Map ? error['code'] as String? ?? '' : '';
-    throw switch (response.statusCode) {
-      400 || 413 || 422 => ApiError(
-        message ?? 'Something about that request was off.',
-        retryable: false,
-        code: code,
-      ),
-      404 => ApiError(
-        message ?? "That quote isn't on the server anymore.",
-        retryable: false,
-        code: code,
-      ),
-      409 => ApiError(
-        message ?? 'The customer already approved this quote.',
-        retryable: false,
-        code: code,
-      ),
-      429 => ApiError(
-        message ?? 'Too many requests. Try again in a minute.',
-        code: code,
-      ),
-      _ => ApiError(
-        message ?? 'Jobwalk had a problem. Please try again.',
-        code: code,
-      ),
-    };
-  }
+  /// draft; the real server always looks at the photos. Retries with the
+  /// same [idempotencyKey] never draft (or charge) twice.
+  Future<DraftResult> draft(
+    DraftRequest request, {
+    SampleJob? sample,
+    String? idempotencyKey,
+  });
 }
 
 /// Demo mode: sample drafts, and quote links that live on this device so
@@ -226,13 +93,16 @@ class DemoJobwalkClient implements JobwalkClient {
   bool get isDemo => true;
 
   @override
-  Future<DraftResult> draft(DraftRequest request, {SampleJob? sample}) async {
+  Future<DraftResult> draft(
+    DraftRequest request, {
+    SampleJob? sample,
+    String? idempotencyKey,
+  }) async {
     await Future<void>.delayed(draftDelay);
     final job = sample ?? SampleJob.forTrade(request.profile.primaryTrade);
     return DraftResult(draft: job.draft, model: 'demo', demo: true);
   }
 
-  @override
   Future<ShareResult> publish(PublicQuote quote) async {
     final id = List.generate(
       16,
@@ -248,7 +118,6 @@ class DemoJobwalkClient implements JobwalkClient {
     );
   }
 
-  @override
   Future<int> update(String id, String ownerToken, PublicQuote quote) async {
     final responses = await _load();
     final r = responses[id] ?? const CustomerResponse();
@@ -269,7 +138,6 @@ class DemoJobwalkClient implements JobwalkClient {
     return 2;
   }
 
-  @override
   Future<CustomerResponse> status(String id, String ownerToken) async =>
       (await _load())[id] ?? const CustomerResponse();
 

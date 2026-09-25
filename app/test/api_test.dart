@@ -1,23 +1,22 @@
+import 'dart:typed_data';
+
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:jobwalk/services/api.dart';
+import 'package:jobwalk/services/server.dart';
 import 'package:jobwalk_core/jobwalk_core.dart';
 
 final now = DateTime.utc(2026, 9, 25, 15);
 
-PublicQuote publicQuote() => PublicQuote.fromQuote(
-  QuoteBuilder.fromDraft(
-    SampleJob.driveway.draft,
-    id: 'q',
-    number: 1001,
-    rates: Rates.forTrade(Trade.pressureWashing),
-    now: now,
-  ),
-  const BusinessProfile(name: 'Shine Pressure Washing'),
-  issuedAt: now,
+Quote quote() => QuoteBuilder.fromDraft(
+  SampleJob.driveway.draft,
+  id: 'q_test0001',
+  number: 1001,
+  rates: Rates.forTrade(Trade.pressureWashing),
+  now: now,
 );
 
 http.Response json(int status, Object body) => http.Response(
@@ -28,110 +27,176 @@ http.Response json(int status, Object body) => http.Response(
 
 void main() {
   final requests = <http.Request>[];
-  HttpJobwalkClient client(http.Response Function(http.Request) reply) =>
-      HttpJobwalkClient(
+  var unauthorized = 0;
+  String? token = 'jws_token';
+
+  ServerClient client(http.Response Function(http.Request) reply) =>
+      ServerClient(
         baseUrl: Uri.parse('https://api.example.com/jobwalk/'),
-        installId: 'inst_test123',
+        token: () => token,
+        onUnauthorized: () => unauthorized++,
         client: MockClient((r) async {
           requests.add(r);
           return reply(r);
         }),
       );
 
-  setUp(requests.clear);
+  setUp(() {
+    requests.clear();
+    unauthorized = 0;
+    token = 'jws_token';
+  });
 
-  test('drafts keep the base path and send the install id', () async {
+  test('drafts keep the base path and send the session and key', () async {
     final c = client(
       (_) => json(200, {
-        'draft': SampleJob.fence.draft.toJson(),
+        'draft': SampleJob.driveway.draft.toJson(),
         'model': 'claude-opus-5-5',
-        'demo': false,
       }),
     );
-    final r = await c.draft(
+    final result = await c.draft(
       DraftRequest(
-        profile: const BusinessProfile(name: 'Oak & Iron'),
+        profile: const BusinessProfile(name: 'Shine'),
         rates: const Rates(),
-        photos: const [],
+        photos: [
+          JobPhoto(
+            bytes: Uint8List.fromList([1, 2, 3]),
+            mediaType: 'image/jpeg',
+          ),
+        ],
       ),
+      idempotencyKey: 'draft_key_1',
     );
-    expect(r.model, 'claude-opus-5-5');
-    expect(r.draft.tiers, hasLength(3));
-    final req = requests.single;
-    expect(req.url.toString(), 'https://api.example.com/jobwalk/v1/drafts');
-    expect(req.headers['x-install-id'], 'inst_test123');
-    expect(
-      jsonDecode(req.body),
-      containsPair('rates', isA<Map<String, Object?>>()),
-    );
+    final r = requests.single;
+    expect(r.url.toString(), 'https://api.example.com/jobwalk/v1/drafts');
+    expect(r.headers['authorization'], 'Bearer jws_token');
+    expect(r.headers['idempotency-key'], 'draft_key_1');
+    expect(result.model, 'claude-opus-5-5');
+    expect(result.draft.items, isNotEmpty);
   });
 
-  test('publish, update, and status use the owner token', () async {
-    final c = client((r) {
-      if (r.method == 'POST') {
-        return json(201, {
-          'id': 'abc123',
-          'url': 'https://jobwalk.app/q/abc123',
-          'owner_token': 'secret',
-          'revision': 1,
-        });
-      }
-      if (r.method == 'PUT') return json(200, {'revision': 2});
-      return json(200, {'response': const CustomerResponse(views: 3).toJson()});
+  test('sign-in sends no token and returns the session', () async {
+    token = null;
+    final c = client(
+      (r) => r.url.path.endsWith('/verify')
+          ? json(200, {
+              'token': 'jws_new',
+              'created': true,
+              'user': {
+                'id': 'u_1',
+                'email': 'dana@example.com',
+                'role': 'owner',
+              },
+              'business': {
+                'id': 'b_1',
+                'profile': {'name': 'Brightline'},
+                'setup_complete': true,
+                'plan': {'id': 'trial', 'trial_drafts_left': 24},
+              },
+            })
+          : json(200, {'ok': true}),
+    );
+    await c.requestCode('dana@example.com');
+    final (session, account) = await c.verifyCode(
+      'dana@example.com',
+      '123456',
+      device: 'iPhone',
+    );
+    expect(requests.first.headers.containsKey('authorization'), isFalse);
+    expect(jsonDecode(requests.last.body), {
+      'email': 'dana@example.com',
+      'code': '123456',
+      'device': 'iPhone',
     });
-    final share = await c.publish(publicQuote());
-    expect(share.url, 'https://jobwalk.app/q/abc123');
-    expect(await c.update(share.id, share.ownerToken, publicQuote()), 2);
-    final status = await c.status(share.id, share.ownerToken);
-    expect(status.views, 3);
-
-    expect(requests[0].url.path, '/jobwalk/v1/quotes');
-    expect(requests[0].headers['authorization'], isNull);
-    expect(requests[1].url.path, '/jobwalk/v1/quotes/abc123');
-    expect(requests[1].headers['authorization'], 'Bearer secret');
-    expect(requests[2].method, 'GET');
-    expect(requests[2].headers['authorization'], 'Bearer secret');
+    expect(session, 'jws_new');
+    expect(account.business.profile.name, 'Brightline');
+    expect(account.business.plan.trialDraftsLeft, 24);
+    expect(account.user.isOwner, isTrue);
   });
 
-  test('server errors keep their message and retry hint', () async {
-    Future<ApiError> errorFor(int status, {String? message}) async {
+  test(
+    'a stale version comes back as a conflict with the server copy',
+    () async {
+      final q = quote();
+      final c = client(
+        (_) => json(409, {
+          'error': {'code': 'conflict', 'message': 'Changed elsewhere.'},
+          'current': {'id': q.id, 'version': 4, 'quote': q.toJson()},
+        }),
+      );
+      await expectLater(
+        c.putQuote(q, baseVersion: 2),
+        throwsA(
+          isA<QuoteConflict>().having((e) => e.current.version, 'version', 4),
+        ),
+      );
+      final sent = jsonDecode(requests.single.body) as Map<String, Object?>;
+      expect(sent['base_version'], 2);
+    },
+  );
+
+  test('401 ends the session', () async {
+    final c = client(
+      (_) => json(401, {
+        'error': {'code': 'unauthorized', 'message': 'Sign in again.'},
+      }),
+    );
+    await expectLater(c.me(), throwsA(isA<ApiError>()));
+    expect(unauthorized, 1);
+  });
+
+  test('server errors keep their code, message, and retry hint', () async {
+    Future<ApiError> fail(int status, String code) async {
       final c = client(
         (_) => json(status, {
-          if (message != null) 'error': {'code': 'x', 'message': message},
+          'error': {'code': code, 'message': 'From the server.'},
         }),
       );
       try {
-        await c.status('id', 'token');
+        await c.me();
       } on ApiError catch (e) {
         return e;
       }
-      fail('expected an ApiError');
+      throw StateError('no error');
     }
 
-    final bad = await errorFor(400, message: 'At least one photo is required.');
-    expect(bad.message, 'At least one photo is required.');
-    expect(bad.retryable, isFalse);
-    expect((await errorFor(409)).retryable, isFalse);
-    expect((await errorFor(404)).retryable, isFalse);
-    expect((await errorFor(429)).retryable, isTrue);
-    final busy = await errorFor(503, message: 'Jobwalk is very busy.');
-    expect(busy.message, 'Jobwalk is very busy.');
-    expect(busy.retryable, isTrue);
+    final upgrade = await fail(402, 'upgrade_required');
+    expect(upgrade.code, 'upgrade_required');
+    expect(upgrade.status, 402);
+    expect(upgrade.retryable, isFalse);
+    expect(upgrade.message, 'From the server.');
+    expect((await fail(503, 'busy')).retryable, isTrue);
+    expect((await fail(409, 'in_progress')).retryable, isTrue);
+    expect((await fail(429, 'rate_limited')).retryable, isTrue);
   });
 
   test('network failures and junk bodies become friendly errors', () async {
-    final offline = HttpJobwalkClient(
+    final offline = ServerClient(
       baseUrl: Uri.parse('https://api.example.com'),
-      installId: 'inst_test123',
-      client: MockClient((_) async => throw http.ClientException('offline')),
+      token: () => 't',
+      client: MockClient((_) async => throw http.ClientException('down')),
     );
     await expectLater(
-      offline.status('id', 'token'),
-      throwsA(
-        isA<ApiError>().having((e) => e.message, 'message', contains('reach')),
-      ),
+      offline.me(),
+      throwsA(isA<ApiError>().having((e) => e.offline, 'offline', isTrue)),
     );
-    final junk = client((_) => http.Response('<html>oops</html>', 200));
-    await expectLater(junk.status('id', 'token'), throwsA(isA<ApiError>()));
+    final junk = client((_) => http.Response('<html>', 200));
+    await expectLater(junk.me(), throwsA(isA<ApiError>()));
+  });
+
+  test('photos follow signed links without our credentials', () async {
+    final c = client((r) {
+      if (r.url.host == 'photos.example.com') {
+        return http.Response.bytes([9, 9], 200);
+      }
+      return http.Response(
+        '',
+        302,
+        headers: {'location': 'https://photos.example.com/signed?x=1'},
+      );
+    });
+    expect(await c.getPhoto('q_1_0'), [9, 9]);
+    expect(requests.first.headers['authorization'], 'Bearer jws_token');
+    expect(requests.last.headers.containsKey('authorization'), isFalse);
   });
 }
