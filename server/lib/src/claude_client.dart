@@ -115,7 +115,9 @@ class ClaudeClient implements MessagesApi {
     Map<String, Object?> body, {
     List<String> betas = const [],
   }) async {
-    final uri = _baseUrl.resolve('/v1/messages');
+    // Append to any path prefix (e.g. a proxy mounted at /anthropic).
+    final prefix = _baseUrl.path.replaceAll(RegExp(r'/+$'), '');
+    final uri = _baseUrl.replace(path: '$prefix/v1/messages');
     final headers = {
       'content-type': 'application/json',
       'x-api-key': apiKey,

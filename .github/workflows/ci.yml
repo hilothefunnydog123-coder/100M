@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches: [main, 'claude/**']
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.47.5
+          channel: stable
+          cache: true
+
+      - name: Core package
+        working-directory: packages/core
+        run: |
+          dart pub get
+          dart format --output=none --set-exit-if-changed lib test
+          dart analyze --fatal-infos
+          dart test
+
+      - name: Server
+        working-directory: server
+        run: |
+          dart pub get
+          dart format --output=none --set-exit-if-changed lib bin test
+          dart analyze --fatal-infos
+          dart test
+
+      - name: App
+        working-directory: app
+        run: |
+          flutter pub get
+          dart format --output=none --set-exit-if-changed lib test tool
+          flutter analyze --fatal-infos
+          flutter test
+
+      - name: Web build (demo mode)
+        working-directory: app
+        run: flutter build web --release --no-web-resources-cdn

@@ -30,6 +30,11 @@ class HttpAnalysisService implements AnalysisService {
 
   final Uri baseUrl;
   final String installId;
+
+  /// `<baseUrl>/v1/checks`, keeping any path prefix on the base URL.
+  Uri get endpoint => baseUrl.replace(
+    path: '${baseUrl.path.replaceAll(RegExp(r'/+$'), '')}/v1/checks',
+  );
   final Duration timeout;
   final http.Client _client;
 
@@ -39,7 +44,7 @@ class HttpAnalysisService implements AnalysisService {
     try {
       response = await _client
           .post(
-            baseUrl.resolve('/v1/checks'),
+            endpoint,
             headers: {
               'content-type': 'application/json',
               'x-install-id': installId,

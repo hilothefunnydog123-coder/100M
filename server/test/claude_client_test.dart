@@ -53,6 +53,20 @@ void main() {
     expect(message.refused, isFalse);
   });
 
+  test('keeps a base URL path prefix', () async {
+    late Uri seen;
+    final client = ClaudeClient(
+      apiKey: 'k',
+      baseUrl: Uri.parse('https://proxy.example/anthropic/'),
+      httpClient: MockClient((request) async {
+        seen = request.url;
+        return jsonResponse(200, okBody);
+      }),
+    );
+    await client.createMessage({});
+    expect(seen.toString(), 'https://proxy.example/anthropic/v1/messages');
+  });
+
   test('omits the beta header when there are no betas', () async {
     late http.Request seen;
     final client = ClaudeClient(

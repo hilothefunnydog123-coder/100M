@@ -179,8 +179,10 @@ class SettingsScreen extends ConsumerWidget {
                 : tile(
                     Icons.workspace_premium_outlined,
                     'Upgrade to Pro',
-                    subtitle:
-                        '${ref.watch(checksRemainingProvider)} free checks left',
+                    subtitle: switch (ref.watch(checksRemainingProvider)) {
+                      1 => '1 free check left',
+                      final n => '$n free checks left',
+                    },
                     onTap: () => Navigator.of(context).push(
                       MaterialPageRoute<bool>(
                         fullscreenDialog: true,

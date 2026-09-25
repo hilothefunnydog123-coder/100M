@@ -7,7 +7,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Spotcheck</string>
+	<string>SpotCheck</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -15,7 +15,11 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>spotcheck</string>
+	<string>SpotCheck</string>
+	<key>NSCameraUsageDescription</key>
+	<string>SpotCheck uses the camera to photograph the skin, eye, mouth, or nail concern you want to check.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>SpotCheck lets you choose an existing photo of the concern you want to check.</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>

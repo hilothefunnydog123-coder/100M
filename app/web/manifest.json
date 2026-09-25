@@ -1,11 +1,11 @@
 {
-    "name": "spotcheck",
-    "short_name": "spotcheck",
+    "name": "SpotCheck",
+    "short_name": "SpotCheck",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "SpotCheck: photo-based health check with AI triage",
+    "background_color": "#F4F6F8",
+    "theme_color": "#0B7A75",
+    "description": "Photograph a skin, eye, mouth, or nail concern and learn what it might be and how soon to get it checked.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

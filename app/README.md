@@ -1,17 +1,35 @@
-# spotcheck
+# SpotCheck app
 
-SpotCheck: photo-based health check with AI triage
+Flutter app for iOS, Android, and web. See the [root README](../README.md)
+for the full picture.
 
-## Getting Started
+```bash
+flutter run                                   # demo mode: canned results
+flutter run --dart-define=API_BASE_URL=http://localhost:8080
+flutter test
+```
 
-This project is a starting point for a Flutter application.
+Build-time options (`--dart-define`):
 
-A few resources to get you started if this is your first Flutter project:
+| Name | Default | |
+|---|---|---|
+| `API_BASE_URL` | (none → demo mode) | SpotCheck API base URL |
+| `DEMO_MODE` | `false` | Force demo mode even with an API URL |
+| `FREE_CHECKS` | `3` | Checks before the paywall |
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+Code map:
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+```
+lib/
+  app.dart, main.dart      bootstrap, storage, theme
+  config.dart              --dart-define configuration
+  data/                    on-device storage (files; browser storage on web)
+  services/                API client, photo capture/processing, purchases
+  state/                   Riverpod providers and the check-flow draft
+  theme/                   colors (incl. urgency palette) and typography
+  ui/                      onboarding, home, check flow, result, history,
+                           paywall, settings
+tool/
+  generate_icons.dart      renders the app icon into every platform slot
+  generate_samples.dart    synthetic demo photos (no real patient images)
+```
