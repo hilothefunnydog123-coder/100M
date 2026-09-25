@@ -26,15 +26,14 @@ class CustomerPreviewScreen extends ConsumerStatefulWidget {
 
 class _CustomerPreviewScreenState extends ConsumerState<CustomerPreviewScreen> {
   String? _option;
-  late final _name = TextEditingController(
-    text: ref.read(quoteProvider(widget.quoteId))?.customer.name ?? '',
-  );
+  final _name = TextEditingController();
   var _agree = false;
   var _busy = false;
 
   @override
   void initState() {
     super.initState();
+    _name.text = ref.read(quoteProvider(widget.quoteId))?.customer.name ?? '';
     final client = ref.read(clientProvider);
     final share = ref.read(quoteProvider(widget.quoteId))?.share;
     // Demo: opening the customer's view counts as the customer opening it.

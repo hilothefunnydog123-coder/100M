@@ -53,6 +53,7 @@ class _BuildingScreenState extends ConsumerState<BuildingScreen>
   Future<void> _run() async {
     final attempt = ++_attempt;
     setState(() => _phase = _Phase.working);
+    if (!_scan.isAnimating) unawaited(_scan.repeat());
     _watch
       ..reset()
       ..start();
@@ -122,6 +123,7 @@ class _BuildingScreenState extends ConsumerState<BuildingScreen>
   void _finish(_Phase phase, String message) {
     _ticker?.cancel();
     _watch.stop();
+    _scan.stop();
     setState(() {
       _phase = phase;
       _message = message;

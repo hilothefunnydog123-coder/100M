@@ -585,13 +585,17 @@ class _PriceFormState extends State<_PriceForm> {
             child: Padding(
               padding: const EdgeInsets.only(bottom: 10),
               child: DropdownButtonFormField<Unit>(
+                isExpanded: true,
                 initialValue: _unit,
                 decoration: const InputDecoration(labelText: 'Per'),
                 items: [
                   for (final u in Unit.values)
                     DropdownMenuItem(
                       value: u,
-                      child: Text(u.isLumpSum ? 'job' : u.singular),
+                      child: Text(
+                        u.isLumpSum ? 'job' : u.singular,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                 ],
                 onChanged: (u) => setState(() => _unit = u ?? _unit),

@@ -14,3 +14,6 @@ build/
 eval/out/
 eval/data/
 *.log
+
+# Tooling
+node_modules/

@@ -206,13 +206,17 @@ class _LineEditorState extends State<_LineEditor> {
                     const SizedBox(width: 10),
                     Expanded(
                       child: DropdownButtonFormField<Unit>(
+                        isExpanded: true,
                         initialValue: _unit,
                         decoration: const InputDecoration(labelText: 'Unit'),
                         items: [
                           for (final u in Unit.values)
                             DropdownMenuItem(
                               value: u,
-                              child: Text(u.isLumpSum ? 'lump sum' : u.plural),
+                              child: Text(
+                                u.isLumpSum ? 'lump sum' : u.plural,
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
                         ],
                         onChanged: (u) => setState(() => _unit = u ?? _unit),

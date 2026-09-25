@@ -26,12 +26,20 @@ class SendSheet extends ConsumerStatefulWidget {
 }
 
 class _SendSheetState extends ConsumerState<SendSheet> {
-  late final Quote _initial = ref.read(quoteProvider(widget.quoteId))!;
-  late final _name = TextEditingController(text: _initial.customer.name);
-  late final _phone = TextEditingController(text: _initial.customer.phone);
-  late final _email = TextEditingController(text: _initial.customer.email);
+  final _name = TextEditingController();
+  final _phone = TextEditingController();
+  final _email = TextEditingController();
   _Channel? _busy;
   String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    final customer = ref.read(quoteProvider(widget.quoteId))?.customer;
+    _name.text = customer?.name ?? '';
+    _phone.text = customer?.phone ?? '';
+    _email.text = customer?.email ?? '';
+  }
 
   @override
   void dispose() {
@@ -72,25 +80,34 @@ class _SendSheetState extends ConsumerState<SendSheet> {
       final url = sent.share!.url;
       final message = _message(sent, url);
       final business = ref.read(settingsProvider).profile.name;
-      switch (channel) {
-        case _Channel.text:
-          await composeText(customer.phone, message);
-        case _Channel.email:
-          await composeEmail(
-            customer.email,
-            'Your quote from $business',
-            message,
-          );
-        case _Channel.copy:
-          await copyText(url);
-        case _Channel.share:
-          await shareText(message, subject: 'Your quote from $business');
+      // The quote is live at this point; if the messages app, email, or
+      // clipboard isn't available, show the link instead of failing.
+      var handedOff = true;
+      try {
+        switch (channel) {
+          case _Channel.text:
+            handedOff = await composeText(customer.phone, message);
+          case _Channel.email:
+            handedOff = await composeEmail(
+              customer.email,
+              'Your quote from $business',
+              message,
+            );
+          case _Channel.copy:
+            await copyText(url);
+          case _Channel.share:
+            await shareText(message, subject: 'Your quote from $business');
+        }
+      } on Object {
+        handedOff = false;
       }
       if (!mounted) return;
       Navigator.of(context).pop();
       showSnack(
         context,
-        channel == _Channel.copy
+        !handedOff
+            ? 'Quote is live at $url'
+            : channel == _Channel.copy
             ? 'Link copied. Paste it anywhere.'
             : 'Quote is live. You will see when it is opened.',
       );
@@ -108,7 +125,13 @@ class _SendSheetState extends ConsumerState<SendSheet> {
     final c = JobColors.of(context);
     final text = Theme.of(context).textTheme;
     final demo = ref.watch(clientProvider).isDemo;
-    final options = quote.hasTiers ? '${quote.tiers.length} options, ' : '';
+    final totals = [
+      for (final id in quote.tierIdsOrNull) quote.totals(id).totalCents,
+    ]..sort();
+    final range = quote.hasTiers
+        ? '${quote.tiers.length} options, ${Money.format(totals.first)} to '
+              '${Money.format(totals.last)}'
+        : Money.format(totals.single);
     Widget busyOr(_Channel ch, Widget icon) => _busy == ch
         ? const SizedBox(
             width: 18,
@@ -124,12 +147,7 @@ class _SendSheetState extends ConsumerState<SendSheet> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          SheetHeader(
-            'Send ${quote.label}',
-            subtitle:
-                '$options${quote.hasTiers ? 'up to ' : ''}'
-                '${Money.format(quote.headlineTotalCents)}',
-          ),
+          SheetHeader('Send ${quote.label}', subtitle: range),
           Flexible(
             child: ListView(
               shrinkWrap: true,

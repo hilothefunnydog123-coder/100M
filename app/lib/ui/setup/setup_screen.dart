@@ -134,9 +134,9 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
                     ),
                     inputFormatters: decimalInput,
                     decoration: const InputDecoration(
+                      labelText: 'Dollars per hour',
                       prefixText: r'$ ',
                       suffixText: '/ hr',
-                      hintText: '65',
                     ),
                     onChanged: (_) => setState(() => _rateTyped = true),
                   ),

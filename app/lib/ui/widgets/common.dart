@@ -76,11 +76,16 @@ class Pill extends StatelessWidget {
           Icon(icon, size: 13, color: tone.fg),
           const SizedBox(width: 4),
         ],
-        Text(
-          label,
-          style: Theme.of(
-            context,
-          ).textTheme.labelSmall?.copyWith(color: tone.fg, letterSpacing: 0.2),
+        Flexible(
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: tone.fg,
+              letterSpacing: 0.2,
+            ),
+          ),
         ),
       ],
     ),

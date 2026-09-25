@@ -118,14 +118,18 @@ class _QuoteScreenState extends ConsumerState<QuoteScreen> {
       );
     }
     final c = JobColors.of(context);
-    final tierId = quote.tier(_tierId)?.id ?? quote.defaultTierId;
     final locked = quote.status == QuoteStatus.approved;
+    // Once approved, open on the option the customer picked.
+    final tierId =
+        quote.tier(_tierId)?.id ??
+        (locked ? quote.tier(quote.chosenTierId)?.id : null) ??
+        quote.defaultTierId;
 
     return Scaffold(
       appBar: AppBar(
         title: Row(
           children: [
-            Text(quote.label),
+            Flexible(child: Text(quote.label, overflow: TextOverflow.ellipsis)),
             const SizedBox(width: 10),
             StatusPill(quote),
           ],
@@ -169,7 +173,8 @@ class _QuoteScreenState extends ConsumerState<QuoteScreen> {
             _StatusCard(quote: quote),
             const SizedBox(height: 10),
           ],
-          if (quote.assumptions.isNotEmpty && !locked) ...[
+          if (quote.assumptions.isNotEmpty &&
+              quote.status == QuoteStatus.draft) ...[
             _AssumptionsCard(quote: quote, onChanged: _save),
             const SizedBox(height: 10),
           ],
@@ -202,7 +207,12 @@ class _QuoteScreenState extends ConsumerState<QuoteScreen> {
           const SizedBox(height: 90),
         ],
       ),
-      bottomNavigationBar: _BottomBar(quote: quote, locked: locked, c: c),
+      bottomNavigationBar: _BottomBar(
+        quote: quote,
+        tierId: tierId,
+        locked: locked,
+        c: c,
+      ),
     );
   }
 
@@ -236,11 +246,15 @@ class _QuoteScreenState extends ConsumerState<QuoteScreen> {
 class _BottomBar extends ConsumerWidget {
   const _BottomBar({
     required this.quote,
+    required this.tierId,
     required this.locked,
     required this.c,
   });
 
   final Quote quote;
+
+  /// The option on screen; its total is the one shown.
+  final String? tierId;
   final bool locked;
   final JobColors c;
 
@@ -249,6 +263,7 @@ class _BottomBar extends ConsumerWidget {
     final text = Theme.of(context).textTheme;
     final share = quote.share;
     final stale = share != null && quote.updatedAt.isAfter(share.sentAt);
+    final shown = locked ? quote.chosenTierId ?? quote.defaultTierId : tierId;
     final label = locked
         ? null
         : share == null
@@ -272,18 +287,19 @@ class _BottomBar extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      locked
-                          ? 'Approved'
-                          : quote.hasTiers
-                          ? '${quote.tiers.length} options'
-                          : 'Total',
+                      [
+                        if (locked) 'Approved',
+                        if (quote.tier(shown) case final t?) t.name,
+                        if (!locked && !quote.hasTiers) 'Total',
+                      ].join(': '),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: text.bodySmall,
                     ),
                     MoneyText(
-                      quote.headlineTotalCents,
+                      quote.totals(shown).totalCents,
                       size: 24,
                       weight: FontWeight.w800,
-                      prefix: !locked && quote.hasTiers ? 'up to ' : '',
                     ),
                   ],
                 ),
