@@ -1,12 +1,12 @@
-// Renders the SpotCheck mark into every platform icon slot:
+// Renders the Jobwalk mark into every platform icon slot:
 //   dart run tool/generate_icons.dart
 import 'dart:io';
 import 'dart:math';
 
 import 'package:image/image.dart' as img;
 
-const top = (11, 122, 117); // brand #0B7A75
-const bottom = (7, 90, 86); // brandInk #075A56
+const top = (246, 102, 50); // accent, a touch lighter
+const bottom = (226, 72, 16); // accent, a touch deeper
 
 void main() {
   // iOS masks icons itself and rejects transparency: full-bleed, opaque.
@@ -46,14 +46,19 @@ void main() {
 void _write(String path, img.Image image) =>
     File(path).writeAsBytesSync(img.encodePng(image));
 
-/// Draws at 4x and downsamples for smooth edges.
+/// Draws at 4x and downsamples for smooth edges: an orange tile with a
+/// white diamond outline, like a surveyor's site marker.
 img.Image render(int size, {required bool rounded, bool opaque = false}) {
   const ss = 4;
   final s = size * ss;
   final image = img.Image(width: s, height: s, numChannels: 4);
   final radius = rounded ? s * 0.26 : 0.0;
+  final c = s / 2;
+  // Diamond ring: |dx| + |dy| between the inner and outer radius.
+  final outer = s * 0.40 / sqrt2;
+  final inner = outer - s * 0.10 * sqrt2;
 
-  bool inside(int x, int y) {
+  bool insideTile(int x, int y) {
     if (radius == 0) return true;
     final cx = x < radius
         ? radius
@@ -65,8 +70,17 @@ img.Image render(int size, {required bool rounded, bool opaque = false}) {
   }
 
   for (final p in image) {
-    if (!inside(p.x, p.y)) {
+    if (!insideTile(p.x, p.y)) {
       p.a = opaque ? 255 : 0;
+      continue;
+    }
+    final l1 = (p.x - c).abs() + (p.y - c).abs();
+    if (l1 <= outer && l1 >= inner) {
+      p
+        ..r = 255
+        ..g = 255
+        ..b = 255
+        ..a = 255;
       continue;
     }
     final t = (p.x + p.y) / (2 * s);
@@ -76,50 +90,6 @@ img.Image render(int size, {required bool rounded, bool opaque = false}) {
       ..b = top.$3 + (bottom.$3 - top.$3) * t
       ..a = 255;
   }
-
-  // Viewfinder corners with round caps.
-  final white = img.ColorRgba8(255, 255, 255, 255);
-  final stroke = s * 0.075;
-  final inset = s * 0.24, len = s * 0.15;
-  void line(double x0, double y0, double x1, double y1) {
-    final steps = (sqrt(pow(x1 - x0, 2) + pow(y1 - y0, 2)) * 2).ceil();
-    for (var i = 0; i <= steps; i++) {
-      final t = i / steps;
-      img.fillCircle(
-        image,
-        x: (x0 + (x1 - x0) * t).round(),
-        y: (y0 + (y1 - y0) * t).round(),
-        radius: (stroke / 2).round(),
-        color: white,
-      );
-    }
-  }
-
-  for (final (x, y, dx, dy) in [
-    (inset, inset, 1, 1),
-    (s - inset, inset, -1, 1),
-    (inset, s - inset, 1, -1),
-    (s - inset, s - inset, -1, -1),
-  ]) {
-    line(x, y, x + dx * len, y);
-    line(x, y, x, y + dy * len);
-  }
-
-  // The spot, with a soft highlight.
-  img.fillCircle(
-    image,
-    x: s ~/ 2,
-    y: s ~/ 2,
-    radius: (s * 0.12).round(),
-    color: img.ColorRgba8(255, 138, 101, 255),
-  );
-  img.fillCircle(
-    image,
-    x: (s * 0.465).round(),
-    y: (s * 0.465).round(),
-    radius: (s * 0.035).round(),
-    color: img.ColorRgba8(255, 255, 255, 180),
-  );
 
   final out = img.copyResize(
     image,

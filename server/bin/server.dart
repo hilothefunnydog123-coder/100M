@@ -1,21 +1,24 @@
 import 'dart:io';
 
+import 'package:jobwalk_server/jobwalk_server.dart';
 import 'package:shelf/shelf_io.dart' as shelf_io;
-import 'package:spotcheck_server/spotcheck_server.dart';
 
 Future<void> main() async {
   final config = ServerConfig.fromEnvironment(Platform.environment);
 
-  final CheckAnalyzer analyzer = config.fakeModel
-      ? DemoAnalyzer()
-      : Analyzer(
+  final QuoteDrafter drafter = config.fakeModel
+      ? DemoDrafter()
+      : Drafter(
           api: ClaudeClient(apiKey: config.apiKey!, baseUrl: config.apiBaseUrl),
-          config: config.analyzer,
+          config: config.drafter,
         );
 
-  final api = SpotCheckApi(
-    analyzer: analyzer,
-    model: config.fakeModel ? 'demo' : config.analyzer.model,
+  final api = JobwalkApi(
+    drafter: drafter,
+    quotes: FileQuoteStore(Directory('${config.dataDir}/quotes')),
+    waitlist: FileWaitlistStore(File('${config.dataDir}/waitlist.jsonl')),
+    model: config.fakeModel ? 'demo' : config.drafter.model,
+    publicBaseUrl: config.publicBaseUrl,
     corsOrigins: config.corsOrigins,
     installLimiter: RateLimiter(
       capacity: config.installBurst,
@@ -38,12 +41,13 @@ Future<void> main() async {
   );
   server.autoCompress = true;
   stdout.writeln(
-    'SpotCheck API listening on :${server.port} '
-    '(${config.fakeModel ? 'demo analyzer' : config.analyzer.model}, '
-    'effort ${config.analyzer.effort}, prompt $promptVersion)',
+    'Jobwalk listening on :${server.port} '
+    '(${config.fakeModel ? 'sample drafts' : config.drafter.model}, '
+    'effort ${config.drafter.effort}, prompt $promptVersion, '
+    'data in ${config.dataDir})',
   );
 
-  // Finish in-flight analyses before exiting on SIGTERM (e.g. Cloud Run).
+  // Finish in-flight drafts before exiting on SIGTERM.
   ProcessSignal.sigterm.watch().listen((_) async {
     await server.close();
     exit(0);

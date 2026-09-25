@@ -1,135 +1,236 @@
-import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:jobwalk_core/jobwalk_core.dart';
 
 import '../../state/providers.dart';
 import '../../theme/colors.dart';
+import '../../theme/theme.dart';
 
-/// Scrollable page content with comfortable padding, centered and width-
-/// limited on tablets and the web.
-class PageBody extends StatelessWidget {
-  const PageBody({
+/// Money in the condensed display face with tabular figures.
+class MoneyText extends StatelessWidget {
+  const MoneyText(
+    this.cents, {
     super.key,
-    required this.children,
-    this.padding = const EdgeInsets.fromLTRB(20, 8, 20, 32),
-    this.controller,
+    this.size = 17,
+    this.weight = FontWeight.w700,
+    this.color,
+    this.prefix = '',
   });
 
-  final List<Widget> children;
-  final EdgeInsets padding;
-  final ScrollController? controller;
+  final int cents;
+  final double size;
+  final FontWeight weight;
+  final Color? color;
+  final String prefix;
+
+  @override
+  Widget build(BuildContext context) => Text(
+    '$prefix${Money.format(cents)}',
+    maxLines: 1,
+    style: TextStyle(
+      fontFamily: numberFont,
+      fontSize: size,
+      fontWeight: weight,
+      height: 1.1,
+      color: color ?? JobColors.of(context).ink,
+      fontFeatures: const [FontFeature.tabularFigures()],
+    ),
+  );
+}
+
+class StatusPill extends StatelessWidget {
+  const StatusPill(this.quote, {super.key});
+
+  final Quote quote;
 
   @override
   Widget build(BuildContext context) {
-    return Align(
-      alignment: Alignment.topCenter,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 560),
-        child: ListView(
-          controller: controller,
-          padding: padding,
-          children: children,
-        ),
-      ),
-    );
+    final tone = JobColors.of(context).forStatus(quote.status);
+    final views = quote.response.views;
+    final label = quote.status == QuoteStatus.viewed && views > 1
+        ? 'Viewed $views×'
+        : quote.status.label;
+    return Pill(label, tone: tone);
   }
 }
 
-/// A bottom action area that stays above the keyboard and system insets.
-class BottomActions extends StatelessWidget {
-  const BottomActions({super.key, required this.children});
+class Pill extends StatelessWidget {
+  const Pill(this.label, {super.key, required this.tone, this.icon});
 
-  final List<Widget> children;
+  final String label;
+  final Tone tone;
+  final IconData? icon;
 
   @override
-  Widget build(BuildContext context) {
-    final c = SpotColors.of(context);
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: c.canvas,
-        border: Border(top: BorderSide(color: c.line)),
-      ),
-      child: SafeArea(
-        top: false,
-        child: Align(
-          alignment: Alignment.topCenter,
-          heightFactor: 1,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 560),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                spacing: 8,
-                children: children,
-              ),
-            ),
-          ),
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+    decoration: BoxDecoration(
+      color: tone.bg,
+      borderRadius: BorderRadius.circular(7),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (icon != null) ...[
+          Icon(icon, size: 13, color: tone.fg),
+          const SizedBox(width: 4),
+        ],
+        Text(
+          label,
+          style: Theme.of(
+            context,
+          ).textTheme.labelSmall?.copyWith(color: tone.fg, letterSpacing: 0.2),
         ),
-      ),
-    );
-  }
+      ],
+    ),
+  );
 }
 
-class SectionTitle extends StatelessWidget {
-  const SectionTitle(this.text, {super.key, this.icon, this.trailing});
+/// Small uppercase heading for a group of content.
+class SectionLabel extends StatelessWidget {
+  const SectionLabel(this.text, {super.key, this.trailing, this.padding});
 
   final String text;
-  final IconData? icon;
   final Widget? trailing;
+  final EdgeInsetsGeometry? padding;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: padding ?? const EdgeInsets.fromLTRB(4, 20, 4, 8),
+    child: Row(
+      children: [
+        Expanded(
+          child: Text(
+            text.toUpperCase(),
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: JobColors.of(context).inkFaint,
+            ),
+          ),
+        ),
+        ?trailing,
+      ],
+    ),
+  );
+}
+
+/// The orange mark: a square with a diamond, like a site marker.
+class LogoMark extends StatelessWidget {
+  const LogoMark({super.key, this.size = 30});
+
+  final double size;
 
   @override
   Widget build(BuildContext context) {
-    final c = SpotColors.of(context);
-    return Padding(
-      padding: const EdgeInsets.only(top: 24, bottom: 10),
-      child: Row(
-        children: [
-          if (icon != null) ...[
-            Icon(icon, size: 18, color: c.inkMuted),
-            const SizedBox(width: 8),
-          ],
-          Expanded(
-            child: Text(
-              text,
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                color: c.inkMuted,
-                letterSpacing: 0.2,
-              ),
-            ),
+    final c = JobColors.of(context);
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: c.accent,
+        borderRadius: BorderRadius.circular(size * 0.28),
+      ),
+      alignment: Alignment.center,
+      child: Transform.rotate(
+        angle: 0.785398,
+        child: Container(
+          width: size * 0.36,
+          height: size * 0.36,
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.white, width: size * 0.09),
+            borderRadius: BorderRadius.circular(size * 0.07),
           ),
-          ?trailing,
-        ],
+        ),
       ),
     );
   }
 }
 
-class SurfaceCard extends StatelessWidget {
-  const SurfaceCard({
+/// A job photo from local storage, cropped to fill.
+class PhotoThumb extends ConsumerWidget {
+  const PhotoThumb(
+    this.photoKey, {
+    super.key,
+    this.size = 56,
+    this.radius = 12,
+    this.width,
+    this.height,
+  });
+
+  final String photoKey;
+  final double size;
+  final double radius;
+  final double? width;
+  final double? height;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final bytes = ref.watch(storedPhotoProvider(photoKey)).value;
+    final c = JobColors.of(context);
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(radius),
+      child: Container(
+        width: width ?? size,
+        height: height ?? size,
+        color: c.surfaceMuted,
+        child: bytes == null
+            ? null
+            : Image.memory(
+                bytes,
+                fit: BoxFit.cover,
+                gaplessPlayback: true,
+                cacheWidth: ((width ?? size) * 3).round(),
+              ),
+      ),
+    );
+  }
+}
+
+/// A placeholder square when a quote has no photos.
+class JobIcon extends StatelessWidget {
+  const JobIcon({super.key, this.size = 56});
+
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = JobColors.of(context);
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: c.surfaceMuted,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Icon(Icons.description_outlined, color: c.inkMuted),
+    );
+  }
+}
+
+/// A rounded white card with the app's border.
+class Panel extends StatelessWidget {
+  const Panel({
     super.key,
     required this.child,
-    this.padding = const EdgeInsets.all(18),
-    this.onTap,
+    this.padding = const EdgeInsets.all(16),
     this.color,
     this.borderColor,
+    this.onTap,
   });
 
   final Widget child;
-  final EdgeInsets padding;
-  final VoidCallback? onTap;
+  final EdgeInsetsGeometry padding;
   final Color? color;
   final Color? borderColor;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    final c = SpotColors.of(context);
+    final c = JobColors.of(context);
     return Material(
       color: color ?? c.surface,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(16),
         side: BorderSide(color: borderColor ?? c.line),
       ),
       clipBehavior: Clip.antiAlias,
@@ -141,199 +242,68 @@ class SurfaceCard extends StatelessWidget {
   }
 }
 
-/// A list of short statements with a leading icon.
-class IconList extends StatelessWidget {
-  const IconList({
-    super.key,
-    required this.items,
-    required this.icon,
-    this.iconColor,
-  });
+/// Digits and one decimal point, for quantities, hours, and money.
+final decimalInput = [FilteringTextInputFormatter.allow(RegExp(r'[0-9.,$]'))];
 
-  final List<String> items;
-  final IconData icon;
-  final Color? iconColor;
+double? parseNumber(String text) {
+  final cleaned = text.replaceAll(RegExp(r'[,$\s]'), '');
+  if (cleaned.isEmpty) return null;
+  final v = double.tryParse(cleaned);
+  return v == null || v.isNaN || v.isInfinite || v < 0 ? null : v;
+}
+
+/// "$4,850" style for editing: no symbol, cents only when present.
+String moneyInputText(int cents) =>
+    Money.format(cents).replaceFirst(r'$', '').replaceAll(',', '');
+
+void showSnack(BuildContext context, String message) {
+  ScaffoldMessenger.of(context)
+    ..hideCurrentSnackBar()
+    ..showSnackBar(SnackBar(content: Text(message)));
+}
+
+/// Standard sheet with a title and scrollable content above the keyboard.
+Future<T?> showAppSheet<T>(
+  BuildContext context, {
+  required Widget Function(BuildContext) builder,
+}) => showModalBottomSheet<T>(
+  context: context,
+  isScrollControlled: true,
+  useSafeArea: true,
+  builder: (context) => Padding(
+    padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+    child: builder(context),
+  ),
+);
+
+/// Title row used at the top of sheets.
+class SheetHeader extends StatelessWidget {
+  const SheetHeader(this.title, {super.key, this.subtitle, this.trailing});
+
+  final String title;
+  final String? subtitle;
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
-    final c = SpotColors.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      spacing: 10,
-      children: [
-        for (final item in items)
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.only(top: 2),
-                child: Icon(icon, size: 18, color: iconColor ?? c.brand),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  item,
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-              ),
-            ],
-          ),
-      ],
-    );
-  }
-}
-
-/// A small pill, e.g. for tags and statuses.
-class Pill extends StatelessWidget {
-  const Pill({super.key, required this.label, this.icon, this.fg, this.bg});
-
-  final String label;
-  final IconData? icon;
-  final Color? fg;
-  final Color? bg;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = SpotColors.of(context);
-    final foreground = fg ?? c.inkMuted;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: bg ?? c.surfaceMuted,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (icon != null) ...[
-            Icon(icon, size: 14, color: foreground),
-            const SizedBox(width: 5),
-          ],
-          Flexible(
-            child: Text(
-              label,
-              style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                color: foreground,
-                fontSize: 13,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Rounded photo from bytes.
-class PhotoThumb extends StatelessWidget {
-  const PhotoThumb({
-    super.key,
-    required this.bytes,
-    this.size = 64,
-    this.radius = 14,
-  });
-
-  final Uint8List? bytes;
-  final double size;
-  final double radius;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = SpotColors.of(context);
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(radius),
-      child: SizedBox.square(
-        dimension: size,
-        child: bytes == null
-            ? ColoredBox(
-                color: c.surfaceMuted,
-                child: Icon(Icons.image_outlined, color: c.inkFaint),
-              )
-            : Image.memory(bytes!, fit: BoxFit.cover, gaplessPlayback: true),
-      ),
-    );
-  }
-}
-
-/// A photo loaded from on-device history.
-class StoredPhoto extends ConsumerWidget {
-  const StoredPhoto({
-    super.key,
-    required this.photoKey,
-    this.size = 64,
-    this.radius = 14,
-  });
-
-  final String? photoKey;
-  final double size;
-  final double radius;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final key = photoKey;
-    final bytes = key == null
-        ? null
-        : ref.watch(storedPhotoProvider(key)).value;
-    return PhotoThumb(bytes: bytes, size: size, radius: radius);
-  }
-}
-
-class DemoBanner extends StatelessWidget {
-  const DemoBanner({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final c = SpotColors.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: c.pro.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.science_outlined, size: 18, color: c.pro),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              'Demo result: a canned example, not an analysis of your photo.',
-              style: Theme.of(
-                context,
-              ).textTheme.bodySmall?.copyWith(color: c.pro),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-const medicalDisclaimer =
-    'SpotCheck gives information, not a diagnosis, and it can be wrong. It '
-    "doesn't replace a medical professional. If you're worried, or "
-    'symptoms change or get worse, see a doctor.';
-
-class DisclaimerText extends StatelessWidget {
-  const DisclaimerText({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final c = SpotColors.of(context);
+    final text = Theme.of(context).textTheme;
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 20),
+      padding: const EdgeInsets.fromLTRB(20, 0, 12, 12),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.info_outline, size: 16, color: c.inkFaint),
-          const SizedBox(width: 8),
           Expanded(
-            child: Text(
-              medicalDisclaimer,
-              style: Theme.of(
-                context,
-              ).textTheme.bodySmall?.copyWith(color: c.inkFaint),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: text.headlineSmall),
+                if (subtitle != null) ...[
+                  const SizedBox(height: 4),
+                  Text(subtitle!, style: text.bodySmall),
+                ],
+              ],
             ),
           ),
+          ?trailing,
         ],
       ),
     );

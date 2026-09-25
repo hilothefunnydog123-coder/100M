@@ -1,16 +1,6 @@
 const _months = [
-  'Jan',
-  'Feb',
-  'Mar',
-  'Apr',
-  'May',
-  'Jun',
-  'Jul',
-  'Aug',
-  'Sep',
-  'Oct',
-  'Nov',
-  'Dec',
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', //
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
 ];
 
 String formatTime(DateTime d) {
@@ -20,25 +10,35 @@ String formatTime(DateTime d) {
   return '$hour:$minute ${l.hour < 12 ? 'AM' : 'PM'}';
 }
 
-/// "Today, 3:42 PM", "Yesterday", or "Sep 25, 2026".
-String formatDate(DateTime d, {DateTime? now}) {
+/// "Sep 25, 2026".
+String formatDay(DateTime d) {
   final l = d.toLocal();
-  final today = (now ?? DateTime.now()).toLocal();
-  final day = DateTime(l.year, l.month, l.day);
-  final diff = DateTime(today.year, today.month, today.day).difference(day);
-  if (diff.inDays == 0) return 'Today, ${formatTime(l)}';
-  if (diff.inDays == 1) return 'Yesterday';
   return '${_months[l.month - 1]} ${l.day}, ${l.year}';
 }
 
-/// "in 5 days", "tomorrow", "today", or "3 days ago".
-String relativeDays(DateTime d, {DateTime? now}) {
-  final base = (now ?? DateTime.now()).toLocal();
-  final a = DateTime(base.year, base.month, base.day);
+/// "Sep 25".
+String formatShortDay(DateTime d) {
   final l = d.toLocal();
-  final days = DateTime(l.year, l.month, l.day).difference(a).inDays;
-  if (days == 0) return 'today';
-  if (days == 1) return 'tomorrow';
-  if (days == -1) return 'yesterday';
-  return days > 0 ? 'in $days days' : '${-days} days ago';
+  return '${_months[l.month - 1]} ${l.day}';
 }
+
+/// "just now", "5 min ago", "3 hr ago", "yesterday", "4 days ago", or a date.
+String timeAgo(DateTime d, {required DateTime now}) {
+  final diff = now.difference(d);
+  if (diff.inMinutes < 1) return 'just now';
+  if (diff.inMinutes < 60) return '${diff.inMinutes} min ago';
+  if (diff.inHours < 24) return '${diff.inHours} hr ago';
+  if (diff.inDays == 1) return 'yesterday';
+  if (diff.inDays < 7) return '${diff.inDays} days ago';
+  return formatShortDay(d);
+}
+
+/// "12.5" or "12" for hours and percentages.
+String trimNumber(double v, {int decimals = 1}) {
+  final s = v.toStringAsFixed(decimals);
+  return s.contains('.') ? s.replaceFirst(RegExp(r'\.?0+$'), '') : s;
+}
+
+/// "4:05" for an elapsed duration.
+String formatElapsed(Duration d) =>
+    '${d.inMinutes}:${(d.inSeconds % 60).toString().padLeft(2, '0')}';

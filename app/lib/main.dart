@@ -17,15 +17,15 @@ Future<void> main() async {
     store = MemoryBlobStore();
   }
   final settings = await SettingsRepository(store).load();
-  final history = await HistoryRepository(store).load();
+  final quotes = await QuoteRepository(store).load();
   runApp(
     ProviderScope(
       overrides: [
         blobStoreProvider.overrideWithValue(store),
         initialSettingsProvider.overrideWithValue(settings),
-        initialHistoryProvider.overrideWithValue(history),
+        initialQuotesProvider.overrideWithValue(quotes),
       ],
-      child: const SpotCheckApp(),
+      child: const JobwalkApp(),
     ),
   );
 }

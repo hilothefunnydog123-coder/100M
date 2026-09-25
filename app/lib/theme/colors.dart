@@ -1,191 +1,140 @@
 import 'package:flutter/material.dart';
-import 'package:spotcheck_core/spotcheck_core.dart';
+import 'package:jobwalk_core/jobwalk_core.dart';
 
-/// Foreground, tinted background, and solid colors for one urgency level.
+/// A foreground and a tinted background for a status or a callout.
 @immutable
-class UrgencyPalette {
-  const UrgencyPalette({
-    required this.fg,
-    required this.bg,
-    required this.solid,
-    required this.border,
-  });
+class Tone {
+  const Tone(this.fg, this.bg);
 
   final Color fg;
   final Color bg;
-  final Color solid;
-  final Color border;
 
-  static UrgencyPalette lerp(UrgencyPalette a, UrgencyPalette b, double t) =>
-      UrgencyPalette(
-        fg: Color.lerp(a.fg, b.fg, t)!,
-        bg: Color.lerp(a.bg, b.bg, t)!,
-        solid: Color.lerp(a.solid, b.solid, t)!,
-        border: Color.lerp(a.border, b.border, t)!,
-      );
+  static Tone lerp(Tone a, Tone b, double t) =>
+      Tone(Color.lerp(a.fg, b.fg, t)!, Color.lerp(a.bg, b.bg, t)!);
 }
 
-/// SpotCheck's semantic colors, available via `SpotColors.of(context)`.
+/// Jobwalk's colors, available via `JobColors.of(context)`.
 @immutable
-class SpotColors extends ThemeExtension<SpotColors> {
-  const SpotColors({
+class JobColors extends ThemeExtension<JobColors> {
+  const JobColors({
     required this.canvas,
     required this.surface,
     required this.surfaceMuted,
+    required this.paper,
     required this.ink,
     required this.inkMuted,
     required this.inkFaint,
     required this.line,
-    required this.brand,
-    required this.brandInk,
-    required this.brandSoft,
-    required this.pro,
-    required this.urgency,
+    required this.accent,
+    required this.onAccent,
+    required this.accentSoft,
+    required this.accentInk,
+    required this.ok,
+    required this.warn,
+    required this.info,
+    required this.danger,
+    required this.neutral,
   });
 
+  /// App background.
   final Color canvas;
   final Color surface;
   final Color surfaceMuted;
+
+  /// The quote document.
+  final Color paper;
   final Color ink;
   final Color inkMuted;
   final Color inkFaint;
   final Color line;
-  final Color brand;
-  final Color brandInk;
-  final Color brandSoft;
-  final Color pro;
-  final Map<Urgency, UrgencyPalette> urgency;
 
-  static SpotColors of(BuildContext context) =>
-      Theme.of(context).extension<SpotColors>()!;
+  /// Safety orange: primary actions only.
+  final Color accent;
+  final Color onAccent;
+  final Color accentSoft;
+  final Color accentInk;
+  final Tone ok;
+  final Tone warn;
+  final Tone info;
+  final Tone danger;
+  final Tone neutral;
 
-  UrgencyPalette forUrgency(Urgency u) => urgency[u]!;
+  static JobColors of(BuildContext context) =>
+      Theme.of(context).extension<JobColors>()!;
 
-  static const light = SpotColors(
-    canvas: Color(0xFFF4F6F8),
+  Tone forStatus(QuoteStatus s) => switch (s) {
+    QuoteStatus.draft => neutral,
+    QuoteStatus.sent => info,
+    QuoteStatus.viewed => warn,
+    QuoteStatus.approved => ok,
+    QuoteStatus.declined => danger,
+  };
+
+  static const light = JobColors(
+    canvas: Color(0xFFF3F1EC),
     surface: Color(0xFFFFFFFF),
-    surfaceMuted: Color(0xFFEEF1F4),
-    ink: Color(0xFF0F1B2D),
-    inkMuted: Color(0xFF55616F),
-    inkFaint: Color(0xFF8A95A3),
-    line: Color(0xFFE1E6EB),
-    brand: Color(0xFF0B7A75),
-    brandInk: Color(0xFF075A56),
-    brandSoft: Color(0xFFE2F2F0),
-    pro: Color(0xFF5B4BDB),
-    urgency: {
-      Urgency.emergency: UrgencyPalette(
-        fg: Color(0xFFB42318),
-        bg: Color(0xFFFEF3F2),
-        solid: Color(0xFFD92D20),
-        border: Color(0xFFFDA29B),
-      ),
-      Urgency.urgent: UrgencyPalette(
-        fg: Color(0xFFB54708),
-        bg: Color(0xFFFFF6ED),
-        solid: Color(0xFFEC6A0C),
-        border: Color(0xFFFEC49A),
-      ),
-      Urgency.soon: UrgencyPalette(
-        fg: Color(0xFF8A5A04),
-        bg: Color(0xFFFFFAEB),
-        solid: Color(0xFFDB9A08),
-        border: Color(0xFFFEDF89),
-      ),
-      Urgency.routine: UrgencyPalette(
-        fg: Color(0xFF1D4ED8),
-        bg: Color(0xFFEFF4FF),
-        solid: Color(0xFF2E6BF0),
-        border: Color(0xFFB2CCFF),
-      ),
-      Urgency.selfCare: UrgencyPalette(
-        fg: Color(0xFF067647),
-        bg: Color(0xFFECFDF3),
-        solid: Color(0xFF12A15E),
-        border: Color(0xFFA6F4C5),
-      ),
-    },
+    surfaceMuted: Color(0xFFEAE7E0),
+    paper: Color(0xFFFFFFFF),
+    ink: Color(0xFF16181C),
+    inkMuted: Color(0xFF5B616B),
+    inkFaint: Color(0xFF8A9099),
+    line: Color(0xFFE2DED5),
+    accent: Color(0xFFF2541B),
+    onAccent: Color(0xFFFFFFFF),
+    accentSoft: Color(0xFFFFEDE4),
+    accentInk: Color(0xFFB23A0B),
+    ok: Tone(Color(0xFF15704A), Color(0xFFE6F4EC)),
+    warn: Tone(Color(0xFF8A4B00), Color(0xFFFFF1DC)),
+    info: Tone(Color(0xFF2252B0), Color(0xFFE8EFFC)),
+    danger: Tone(Color(0xFFB42318), Color(0xFFFDEEEC)),
+    neutral: Tone(Color(0xFF5B616B), Color(0xFFEAE7E0)),
   );
 
-  static const dark = SpotColors(
-    canvas: Color(0xFF0C1117),
-    surface: Color(0xFF151C24),
-    surfaceMuted: Color(0xFF1D2630),
-    ink: Color(0xFFE8EEF3),
-    inkMuted: Color(0xFFA3AFBC),
-    inkFaint: Color(0xFF6E7B89),
-    line: Color(0xFF26313C),
-    brand: Color(0xFF3CC4BC),
-    brandInk: Color(0xFF7ADCD5),
-    brandSoft: Color(0xFF12302F),
-    pro: Color(0xFF9A8CFF),
-    urgency: {
-      Urgency.emergency: UrgencyPalette(
-        fg: Color(0xFFFFA59E),
-        bg: Color(0xFF3A1614),
-        solid: Color(0xFFF04438),
-        border: Color(0xFF7A271A),
-      ),
-      Urgency.urgent: UrgencyPalette(
-        fg: Color(0xFFFDB57A),
-        bg: Color(0xFF38200E),
-        solid: Color(0xFFF38744),
-        border: Color(0xFF7E3A0E),
-      ),
-      Urgency.soon: UrgencyPalette(
-        fg: Color(0xFFFDD771),
-        bg: Color(0xFF342808),
-        solid: Color(0xFFF5B92B),
-        border: Color(0xFF7A5A0B),
-      ),
-      Urgency.routine: UrgencyPalette(
-        fg: Color(0xFF9CBDFF),
-        bg: Color(0xFF14233F),
-        solid: Color(0xFF5B8DEF),
-        border: Color(0xFF26437A),
-      ),
-      Urgency.selfCare: UrgencyPalette(
-        fg: Color(0xFF75E0A7),
-        bg: Color(0xFF0E2A1D),
-        solid: Color(0xFF32C47F),
-        border: Color(0xFF155B3A),
-      ),
-    },
+  static const dark = JobColors(
+    canvas: Color(0xFF0F1114),
+    surface: Color(0xFF181B20),
+    surfaceMuted: Color(0xFF22262D),
+    paper: Color(0xFF1C1F25),
+    ink: Color(0xFFF3F1EC),
+    inkMuted: Color(0xFFABB0B8),
+    inkFaint: Color(0xFF7D838D),
+    line: Color(0xFF2C3139),
+    accent: Color(0xFFFF6431),
+    onAccent: Color(0xFF1A0A03),
+    accentSoft: Color(0xFF3A1E12),
+    accentInk: Color(0xFFFF9C75),
+    ok: Tone(Color(0xFF5FD39C), Color(0xFF112C1F)),
+    warn: Tone(Color(0xFFF7B964), Color(0xFF33230D)),
+    info: Tone(Color(0xFF8CB0FF), Color(0xFF15213A)),
+    danger: Tone(Color(0xFFFF8E84), Color(0xFF3A1614)),
+    neutral: Tone(Color(0xFFABB0B8), Color(0xFF22262D)),
   );
 
   @override
-  SpotColors copyWith() => this;
+  JobColors copyWith() => this;
 
   @override
-  SpotColors lerp(ThemeExtension<SpotColors>? other, double t) {
-    if (other is! SpotColors) return this;
+  JobColors lerp(covariant JobColors? other, double t) {
+    if (other == null) return this;
     Color c(Color a, Color b) => Color.lerp(a, b, t)!;
-    return SpotColors(
+    return JobColors(
       canvas: c(canvas, other.canvas),
       surface: c(surface, other.surface),
       surfaceMuted: c(surfaceMuted, other.surfaceMuted),
+      paper: c(paper, other.paper),
       ink: c(ink, other.ink),
       inkMuted: c(inkMuted, other.inkMuted),
       inkFaint: c(inkFaint, other.inkFaint),
       line: c(line, other.line),
-      brand: c(brand, other.brand),
-      brandInk: c(brandInk, other.brandInk),
-      brandSoft: c(brandSoft, other.brandSoft),
-      pro: c(pro, other.pro),
-      urgency: {
-        for (final u in Urgency.values)
-          u: UrgencyPalette.lerp(urgency[u]!, other.urgency[u]!, t),
-      },
+      accent: c(accent, other.accent),
+      onAccent: c(onAccent, other.onAccent),
+      accentSoft: c(accentSoft, other.accentSoft),
+      accentInk: c(accentInk, other.accentInk),
+      ok: Tone.lerp(ok, other.ok, t),
+      warn: Tone.lerp(warn, other.warn, t),
+      info: Tone.lerp(info, other.info, t),
+      danger: Tone.lerp(danger, other.danger, t),
+      neutral: Tone.lerp(neutral, other.neutral, t),
     );
   }
 }
-
-/// Representative swatches for the Fitzpatrick skin types in the intake.
-const skinToneSwatches = {
-  'fst1': Color(0xFFF6DDCC),
-  'fst2': Color(0xFFEAC4A4),
-  'fst3': Color(0xFFD29F79),
-  'fst4': Color(0xFFAE7850),
-  'fst5': Color(0xFF7B5034),
-  'fst6': Color(0xFF4A2F22),
-};

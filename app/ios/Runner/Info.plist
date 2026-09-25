@@ -7,7 +7,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>SpotCheck</string>
+	<string>Jobwalk</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -15,11 +15,17 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>SpotCheck</string>
+	<string>Jobwalk</string>
 	<key>NSCameraUsageDescription</key>
-	<string>SpotCheck uses the camera to photograph the skin, eye, mouth, or nail concern you want to check.</string>
+	<string>Jobwalk uses the camera to photograph the job you are quoting.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>SpotCheck lets you choose an existing photo of the concern you want to check.</string>
+	<string>Jobwalk lets you pick photos of the job you are quoting.</string>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>sms</string>
+		<string>mailto</string>
+		<string>tel</string>
+	</array>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>

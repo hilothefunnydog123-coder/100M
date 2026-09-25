@@ -8,15 +8,12 @@ import 'blob_store.dart';
 
 Future<BlobStore> openPlatformBlobStore() async {
   final support = await getApplicationSupportDirectory();
-  final dir = Directory('${support.path}/spotcheck');
+  final dir = Directory('${support.path}/jobwalk');
   await dir.create(recursive: true);
   return FileBlobStore(dir);
 }
 
 /// Stores each key as a file in the app's private support directory.
-///
-/// Health photos stay on the device. Before launch, consider excluding this
-/// directory from iCloud backups and encrypting it at rest.
 class FileBlobStore implements BlobStore {
   FileBlobStore(this.dir);
 

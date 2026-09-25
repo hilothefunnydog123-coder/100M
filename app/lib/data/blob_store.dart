@@ -5,7 +5,7 @@ import 'blob_store_prefs.dart'
     as platform;
 
 /// Minimal key-value storage for text and bytes. Everything the app keeps
-/// (settings, history, photos) lives on the device behind this interface.
+/// (settings, quotes, job photos) lives on the device behind this interface.
 abstract interface class BlobStore {
   Future<String?> readText(String key);
   Future<void> writeText(String key, String value);

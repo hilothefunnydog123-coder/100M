@@ -5,7 +5,7 @@ import 'dart:math';
 
 import 'package:http/http.dart' as http;
 
-/// The subset of the Claude Messages API the analyzer needs. Implemented by
+/// The subset of the Claude Messages API the drafter needs. Implemented by
 /// [ClaudeClient] and by fakes in tests and local development.
 abstract interface class MessagesApi {
   Future<ClaudeMessage> createMessage(

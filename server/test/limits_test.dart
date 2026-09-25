@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:spotcheck_server/spotcheck_server.dart';
+import 'package:jobwalk_server/jobwalk_server.dart';
 import 'package:test/test.dart';
 
 void main() {

@@ -1,8 +1,8 @@
-name: spotcheck_core
+name: jobwalk_core
 description: >-
-  Shared domain model for SpotCheck: body sites, the symptom intake catalog,
-  deterministic safety rules, and the check result model used by both the
-  Flutter app and the analysis server.
+  Shared model for Jobwalk: quotes, line items, the deterministic pricing
+  math, AI draft parsing, and the customer-facing quote. Pure Dart, used by
+  the Flutter app, the server, and the accuracy harness.
 version: 0.1.0
 publish_to: none
 

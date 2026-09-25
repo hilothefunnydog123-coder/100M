@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'package:spotcheck_server/spotcheck_server.dart';
+import 'package:jobwalk_server/jobwalk_server.dart';
 import 'package:test/test.dart';
 
 http.Response jsonResponse(

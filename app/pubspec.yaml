@@ -1,5 +1,5 @@
-name: spotcheck
-description: "SpotCheck: photo-based health check with AI triage"
+name: jobwalk
+description: "Jobwalk: quote the job before you leave the driveway."
 publish_to: 'none'
 version: 0.1.0+1
 
@@ -10,14 +10,13 @@ dependencies:
   flutter:
     sdk: flutter
   flutter_riverpod: ^3.4.3
-  cupertino_icons: ^1.0.8
   http: ^1.6.0
   image_picker: ^1.2.3
+  jobwalk_core:
+    path: ../packages/core
   path_provider: ^2.1.6
   share_plus: ^13.3.0
   shared_preferences: ^2.5.5
-  spotcheck_core:
-    path: ../packages/core
   url_launcher: ^6.3.2
 
 dev_dependencies:
@@ -31,15 +30,23 @@ flutter:
   assets:
     - assets/samples/
   fonts:
-    - family: Figtree
+    - family: Barlow
       fonts:
-        - asset: assets/fonts/Figtree-Regular.ttf
+        - asset: assets/fonts/Barlow-Regular.ttf
           weight: 400
-        - asset: assets/fonts/Figtree-Medium.ttf
+        - asset: assets/fonts/Barlow-Medium.ttf
           weight: 500
-        - asset: assets/fonts/Figtree-SemiBold.ttf
+        - asset: assets/fonts/Barlow-SemiBold.ttf
           weight: 600
-        - asset: assets/fonts/Figtree-Bold.ttf
+        - asset: assets/fonts/Barlow-Bold.ttf
           weight: 700
-        - asset: assets/fonts/Figtree-ExtraBold.ttf
+        - asset: assets/fonts/Barlow-ExtraBold.ttf
+          weight: 800
+    - family: BarlowSemiCondensed
+      fonts:
+        - asset: assets/fonts/BarlowSemiCondensed-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/BarlowSemiCondensed-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/BarlowSemiCondensed-ExtraBold.ttf
           weight: 800

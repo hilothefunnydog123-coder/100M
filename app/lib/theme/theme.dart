@@ -2,36 +2,50 @@ import 'package:flutter/material.dart';
 
 import 'colors.dart';
 
+const bodyFont = 'Barlow';
+
+/// Condensed display face for headlines and money.
+const numberFont = 'BarlowSemiCondensed';
+
 ThemeData buildTheme(Brightness brightness) {
-  final c = brightness == Brightness.light ? SpotColors.light : SpotColors.dark;
+  final c = brightness == Brightness.light ? JobColors.light : JobColors.dark;
   final scheme =
-      ColorScheme.fromSeed(seedColor: c.brand, brightness: brightness).copyWith(
-        primary: c.brand,
-        onPrimary: brightness == Brightness.light
-            ? Colors.white
-            : const Color(0xFF04201F),
+      ColorScheme.fromSeed(
+        seedColor: c.accent,
+        brightness: brightness,
+      ).copyWith(
+        primary: c.accent,
+        onPrimary: c.onAccent,
+        secondary: c.ink,
+        onSecondary: c.canvas,
         surface: c.surface,
         onSurface: c.ink,
         onSurfaceVariant: c.inkMuted,
         outline: c.line,
         outlineVariant: c.line,
+        error: c.danger.fg,
       );
 
-  const family = 'Figtree';
-  TextStyle t(double size, FontWeight weight, {double height = 1.3}) =>
-      TextStyle(
-        fontFamily: family,
-        fontSize: size,
-        fontWeight: weight,
-        height: height,
-        color: c.ink,
-        letterSpacing: size >= 24 ? -0.4 : 0,
-      );
+  TextStyle t(
+    double size,
+    FontWeight weight, {
+    double height = 1.3,
+    String family = bodyFont,
+    double spacing = 0,
+  }) => TextStyle(
+    fontFamily: family,
+    fontSize: size,
+    fontWeight: weight,
+    height: height,
+    color: c.ink,
+    letterSpacing: spacing,
+  );
 
   final text = TextTheme(
-    displaySmall: t(34, FontWeight.w800, height: 1.12),
-    headlineMedium: t(28, FontWeight.w800, height: 1.15),
-    headlineSmall: t(23, FontWeight.w700, height: 1.2),
+    displayMedium: t(44, FontWeight.w800, height: 1.02, family: numberFont),
+    displaySmall: t(36, FontWeight.w800, height: 1.05, family: numberFont),
+    headlineMedium: t(30, FontWeight.w800, height: 1.1, family: numberFont),
+    headlineSmall: t(24, FontWeight.w700, height: 1.15, family: numberFont),
     titleLarge: t(20, FontWeight.w700),
     titleMedium: t(17, FontWeight.w700),
     titleSmall: t(15, FontWeight.w700),
@@ -40,7 +54,7 @@ ThemeData buildTheme(Brightness brightness) {
     bodySmall: t(13, FontWeight.w500, height: 1.4).copyWith(color: c.inkMuted),
     labelLarge: t(16, FontWeight.w700),
     labelMedium: t(14, FontWeight.w600),
-    labelSmall: t(12, FontWeight.w700).copyWith(letterSpacing: 0.4),
+    labelSmall: t(12, FontWeight.w700, spacing: 0.8),
   );
 
   final shape = RoundedRectangleBorder(borderRadius: BorderRadius.circular(14));
@@ -49,10 +63,9 @@ ThemeData buildTheme(Brightness brightness) {
     useMaterial3: true,
     brightness: brightness,
     colorScheme: scheme,
-    fontFamily: family,
+    fontFamily: bodyFont,
     textTheme: text,
     scaffoldBackgroundColor: c.canvas,
-    splashFactory: InkSparkle.splashFactory,
     extensions: [c],
     appBarTheme: AppBarTheme(
       backgroundColor: c.canvas,
@@ -65,18 +78,18 @@ ThemeData buildTheme(Brightness brightness) {
     ),
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
-        minimumSize: const Size.fromHeight(56),
+        minimumSize: const Size(64, 56),
         shape: shape,
         textStyle: text.labelLarge,
-        backgroundColor: c.brand,
-        foregroundColor: scheme.onPrimary,
+        backgroundColor: c.accent,
+        foregroundColor: c.onAccent,
         disabledBackgroundColor: c.surfaceMuted,
         disabledForegroundColor: c.inkFaint,
       ),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
-        minimumSize: const Size.fromHeight(52),
+        minimumSize: const Size(64, 52),
         shape: shape,
         textStyle: text.labelLarge,
         foregroundColor: c.ink,
@@ -85,7 +98,7 @@ ThemeData buildTheme(Brightness brightness) {
     ),
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(
-        foregroundColor: c.brandInk,
+        foregroundColor: c.ink,
         textStyle: text.labelMedium,
       ),
     ),
@@ -94,7 +107,7 @@ ThemeData buildTheme(Brightness brightness) {
       elevation: 0,
       margin: EdgeInsets.zero,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(16),
         side: BorderSide(color: c.line),
       ),
     ),
@@ -102,25 +115,38 @@ ThemeData buildTheme(Brightness brightness) {
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: c.surface,
-      contentPadding: const EdgeInsets.all(16),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide(color: c.line),
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: c.line, width: 1.5),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide(color: c.line),
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: c.line, width: 1.5),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide(color: c.brand, width: 2),
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: c.ink, width: 2),
       ),
+      labelStyle: text.bodyMedium?.copyWith(color: c.inkMuted),
+      floatingLabelStyle: text.bodyMedium?.copyWith(color: c.ink),
       hintStyle: text.bodyMedium?.copyWith(color: c.inkFaint),
+    ),
+    chipTheme: ChipThemeData(
+      backgroundColor: c.surface,
+      selectedColor: c.ink,
+      disabledColor: c.surfaceMuted,
+      labelStyle: text.labelMedium,
+      secondaryLabelStyle: text.labelMedium?.copyWith(color: c.canvas),
+      side: BorderSide(color: c.line, width: 1.5),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      showCheckmark: false,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
     ),
     snackBarTheme: SnackBarThemeData(
       behavior: SnackBarBehavior.floating,
       backgroundColor: c.ink,
-      contentTextStyle: text.bodyMedium?.copyWith(color: c.surface),
+      contentTextStyle: text.bodyMedium?.copyWith(color: c.canvas),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     ),
     bottomSheetTheme: BottomSheetThemeData(
@@ -132,16 +158,29 @@ ThemeData buildTheme(Brightness brightness) {
       ),
     ),
     progressIndicatorTheme: ProgressIndicatorThemeData(
-      color: c.brand,
+      color: c.accent,
       linearTrackColor: c.surfaceMuted,
+    ),
+    checkboxTheme: CheckboxThemeData(
+      fillColor: WidgetStateProperty.resolveWith(
+        (s) => s.contains(WidgetState.selected) ? c.ink : null,
+      ),
+      checkColor: WidgetStatePropertyAll(c.canvas),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
+      side: BorderSide(color: c.inkFaint, width: 1.8),
     ),
     switchTheme: SwitchThemeData(
       thumbColor: WidgetStateProperty.resolveWith(
-        (s) => s.contains(WidgetState.selected) ? Colors.white : null,
+        (s) => s.contains(WidgetState.selected) ? c.canvas : null,
       ),
       trackColor: WidgetStateProperty.resolveWith(
-        (s) => s.contains(WidgetState.selected) ? c.brand : null,
+        (s) => s.contains(WidgetState.selected) ? c.ink : null,
       ),
+    ),
+    listTileTheme: ListTileThemeData(
+      iconColor: c.inkMuted,
+      titleTextStyle: text.titleSmall,
+      subtitleTextStyle: text.bodySmall,
     ),
   );
 }

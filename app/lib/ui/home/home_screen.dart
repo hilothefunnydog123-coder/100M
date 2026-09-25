@@ -1,85 +1,222 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:spotcheck_core/spotcheck_core.dart';
+import 'package:jobwalk_core/jobwalk_core.dart';
 
-import '../../data/models.dart';
-import '../../services/launcher.dart';
-import '../../state/check_flow.dart';
 import '../../state/providers.dart';
 import '../../theme/colors.dart';
 import '../../util/format.dart';
-import '../check/check_flow_screen.dart';
-import '../history/check_detail_screen.dart';
-import '../paywall/paywall_screen.dart';
+import '../capture/capture_screen.dart';
+import '../quote/quote_screen.dart';
 import '../settings/settings_screen.dart';
-import '../widgets/brand.dart';
 import '../widgets/common.dart';
-import '../widgets/triage.dart';
 
-class HomeScreen extends ConsumerWidget {
+enum _Filter {
+  all('All'),
+  drafts('Drafts'),
+  waiting('Waiting'),
+  won('Won');
+
+  const _Filter(this.label);
+
+  final String label;
+
+  bool matches(Quote q) => switch (this) {
+    _Filter.all => true,
+    _Filter.drafts => q.status == QuoteStatus.draft,
+    _Filter.waiting => q.status.isOpen,
+    _Filter.won => q.status == QuoteStatus.approved,
+  };
+}
+
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final history = ref.watch(historyProvider);
-    final due = ref.watch(dueRechecksProvider);
-    final remaining = ref.watch(checksRemainingProvider);
-    final emergency = ref.watch(
-      settingsProvider.select((s) => s.emergencyNumber),
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  var _filter = _Filter.all;
+
+  @override
+  void initState() {
+    super.initState();
+    // Catch up on views and approvals since the app was last open.
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => unawaited(ref.read(quotesProvider.notifier).refreshStatuses()),
     );
-    final c = SpotColors.of(context);
+  }
+
+  void _newQuote({SampleJob? sample}) => Navigator.of(context).push(
+    MaterialPageRoute<void>(builder: (_) => CaptureScreen(sample: sample)),
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    final quotes = ref.watch(quotesProvider);
+    final profile = ref.watch(settingsProvider.select((s) => s.profile));
+    final demo = ref.watch(configProvider).demoMode;
+    final c = JobColors.of(context);
     final text = Theme.of(context).textTheme;
+    final visible = quotes.where(_filter.matches).toList();
 
     return Scaffold(
       appBar: AppBar(
-        titleSpacing: 20,
-        title: const Wordmark(size: 30),
+        titleSpacing: 16,
+        title: Row(
+          children: [
+            const LogoMark(size: 26),
+            const SizedBox(width: 10),
+            Flexible(
+              child: Text(
+                profile.name,
+                overflow: TextOverflow.ellipsis,
+                style: text.titleMedium,
+              ),
+            ),
+          ],
+        ),
         actions: [
           IconButton(
             tooltip: 'Settings',
-            icon: const Icon(Icons.settings_outlined),
+            icon: const Icon(Icons.tune_rounded),
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute<void>(builder: (_) => const SettingsScreen()),
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 4),
         ],
       ),
-      body: PageBody(
-        children: [
-          _StartCard(remaining: remaining),
-          if (due.isNotEmpty) ...[
-            const SectionTitle('Time to recheck', icon: Icons.event_repeat),
-            for (final r in due)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: _RecheckTile(record: r),
+      body: RefreshIndicator(
+        color: c.accent,
+        onRefresh: () => ref.read(quotesProvider.notifier).refreshStatuses(),
+        child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
+            if (demo)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+                  child: Text(
+                    'Demo mode: drafts come from sample jobs and links stay '
+                    'on this phone.',
+                    style: text.bodySmall,
+                  ),
+                ),
               ),
+            if (quotes.isNotEmpty) ...[
+              const SliverToBoxAdapter(child: _StatsRow()),
+              SliverToBoxAdapter(
+                child: SizedBox(
+                  height: 52,
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                    children: [
+                      for (final f in _Filter.values)
+                        Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: ChoiceChip(
+                            label: Text(f.label),
+                            selected: _filter == f,
+                            onSelected: (_) => setState(() => _filter = f),
+                            labelStyle: text.labelMedium?.copyWith(
+                              color: _filter == f ? c.canvas : c.ink,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+            if (quotes.isEmpty)
+              SliverFillRemaining(
+                hasScrollBody: false,
+                child: _EmptyState(onSample: (s) => _newQuote(sample: s)),
+              )
+            else if (visible.isEmpty)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.all(32),
+                  child: Text(
+                    'Nothing here yet.',
+                    textAlign: TextAlign.center,
+                    style: text.bodyMedium?.copyWith(color: c.inkMuted),
+                  ),
+                ),
+              )
+            else
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+                sliver: SliverList.separated(
+                  itemCount: visible.length,
+                  separatorBuilder: (_, _) => const SizedBox(height: 8),
+                  itemBuilder: (context, i) => _QuoteTile(visible[i]),
+                ),
+              ),
+            const SliverToBoxAdapter(child: SizedBox(height: 120)),
           ],
-          SectionTitle(
-            'Your checks',
-            icon: Icons.history,
-            trailing: history.isEmpty
-                ? null
-                : Text('${history.length}', style: text.labelMedium),
+        ),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      floatingActionButton: SizedBox(
+        height: 60,
+        child: FloatingActionButton.extended(
+          onPressed: _newQuote,
+          backgroundColor: c.accent,
+          foregroundColor: c.onAccent,
+          elevation: 2,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
           ),
-          if (history.isEmpty)
-            const _EmptyHistory()
-          else
-            for (final r in history)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: _HistoryTile(record: r),
-              ),
-          const SizedBox(height: 12),
-          Center(
-            child: TextButton.icon(
-              onPressed: () => callNumber(emergency),
-              style: TextButton.styleFrom(
-                foregroundColor: c.forUrgency(Urgency.emergency).fg,
-              ),
-              icon: const Icon(Icons.call_outlined, size: 18),
-              label: Text('Emergency? Call $emergency'),
+          icon: const Icon(Icons.photo_camera_rounded),
+          label: Text(
+            'New quote',
+            style: text.labelLarge?.copyWith(color: c.onAccent),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _StatsRow extends ConsumerWidget {
+  const _StatsRow();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final s = ref.watch(statsProvider);
+    final month = formatDay(ref.watch(clockProvider)()).split(' ').first;
+    final winRate = s.winRate;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      child: Row(
+        children: [
+          Expanded(
+            child: _Stat(
+              label: 'Waiting on',
+              cents: s.openCents,
+              detail: '${s.openCount} quote${s.openCount == 1 ? '' : 's'}',
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: _Stat(
+              label: 'Won in $month',
+              cents: s.wonCents,
+              detail: '${s.wonCount} job${s.wonCount == 1 ? '' : 's'}',
+              highlight: s.wonCents > 0,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: _Stat(
+              label: 'Win rate',
+              value: winRate == null ? '–' : '${(winRate * 100).round()}%',
+              detail: '${s.sentCount} sent',
             ),
           ),
         ],
@@ -88,112 +225,55 @@ class HomeScreen extends ConsumerWidget {
   }
 }
 
-/// Starts a check, or shows the paywall when free checks are used up.
-Future<void> startCheck(
-  BuildContext context,
-  WidgetRef ref, {
-  CheckRecord? recheckOf,
-}) async {
-  final remaining = ref.read(checksRemainingProvider);
-  if (remaining == 0) {
-    final unlocked = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(
-        fullscreenDialog: true,
-        builder: (_) => const PaywallScreen(),
-      ),
-    );
-    if (unlocked != true || !context.mounted) return;
-  }
-  ref.read(checkFlowProvider.notifier).start(recheckOf: recheckOf);
-  await Navigator.of(context).push(
-    MaterialPageRoute<void>(
-      builder: (_) => CheckFlowScreen(recheckOf: recheckOf),
-    ),
-  );
-}
+class _Stat extends StatelessWidget {
+  const _Stat({
+    required this.label,
+    required this.detail,
+    this.cents,
+    this.value,
+    this.highlight = false,
+  });
 
-class _StartCard extends ConsumerWidget {
-  const _StartCard({required this.remaining});
-
-  final int? remaining;
+  final String label;
+  final String detail;
+  final int? cents;
+  final String? value;
+  final bool highlight;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final c = SpotColors.of(context);
+  Widget build(BuildContext context) {
+    final c = JobColors.of(context);
     final text = Theme.of(context).textTheme;
-    return Container(
-      padding: const EdgeInsets.fromLTRB(22, 24, 22, 22),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(26),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [c.brand, c.brandInk],
-        ),
-      ),
+    return Panel(
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'What should we look at?',
-            style: text.headlineSmall?.copyWith(color: Colors.white),
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: text.bodySmall,
           ),
-          const SizedBox(height: 8),
-          Text(
-            'Skin, moles, rashes, eyes, mouth, nails, or scalp.',
-            style: text.bodyMedium?.copyWith(
-              color: Colors.white.withValues(alpha: 0.85),
-            ),
-          ),
-          const SizedBox(height: 20),
-          FilledButton.icon(
-            onPressed: () => startCheck(context, ref),
-            style: FilledButton.styleFrom(
-              backgroundColor: Colors.white,
-              foregroundColor: c.brandInk,
-            ),
-            icon: const Icon(Icons.photo_camera_outlined),
-            label: const Text('Start a check'),
-          ),
-          const SizedBox(height: 12),
-          Center(
-            child: Text(
-              remaining == null
-                  ? 'SpotCheck Pro: unlimited checks'
-                  : remaining == 1
-                  ? '1 free check left'
-                  : '$remaining free checks left',
-              style: text.labelMedium?.copyWith(
-                color: Colors.white.withValues(alpha: 0.85),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _EmptyHistory extends StatelessWidget {
-  const _EmptyHistory();
-
-  @override
-  Widget build(BuildContext context) {
-    final c = SpotColors.of(context);
-    final text = Theme.of(context).textTheme;
-    return SurfaceCard(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 28),
-      child: Column(
-        children: [
-          Icon(Icons.photo_library_outlined, size: 36, color: c.inkFaint),
-          const SizedBox(height: 12),
-          Text('No checks yet', style: text.titleMedium),
           const SizedBox(height: 6),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: cents != null
+                ? MoneyText(
+                    cents!,
+                    size: 24,
+                    weight: FontWeight.w800,
+                    color: highlight ? c.ok.fg : c.ink,
+                  )
+                : Text(value!, style: text.headlineSmall),
+          ),
+          const SizedBox(height: 2),
           Text(
-            'Your results will be saved here on this phone, so you can '
-            'track changes and share them with a doctor.',
-            textAlign: TextAlign.center,
-            style: text.bodyMedium?.copyWith(color: c.inkMuted),
+            detail,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: text.bodySmall?.copyWith(color: c.inkFaint),
           ),
         ],
       ),
@@ -201,110 +281,138 @@ class _EmptyHistory extends StatelessWidget {
   }
 }
 
-class _HistoryTile extends StatelessWidget {
-  const _HistoryTile({required this.record});
+class _QuoteTile extends ConsumerWidget {
+  const _QuoteTile(this.quote);
 
-  final CheckRecord record;
-
-  @override
-  Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    final c = SpotColors.of(context);
-    final headline = record.result.assessment?.headline ?? '';
-    return SurfaceCard(
-      padding: const EdgeInsets.all(12),
-      onTap: () => Navigator.of(context).push(
-        MaterialPageRoute<void>(
-          builder: (_) => CheckDetailScreen(recordId: record.id),
-        ),
-      ),
-      child: Row(
-        children: [
-          StoredPhoto(photoKey: record.photoKeys.firstOrNull, size: 64),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        record.site.label,
-                        style: text.titleSmall,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(formatDate(record.createdAt), style: text.bodySmall),
-                  ],
-                ),
-                if (headline.isNotEmpty) ...[
-                  const SizedBox(height: 3),
-                  Text(
-                    headline,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: text.bodyMedium?.copyWith(color: c.inkMuted),
-                  ),
-                ],
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 6,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    if (record.result.urgency case final u?) UrgencyBadge(u),
-                    if (record.tracking)
-                      Icon(Icons.event_repeat, size: 16, color: c.inkFaint),
-                    if (record.result.demo) Pill(label: 'Demo', fg: c.pro),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _RecheckTile extends ConsumerWidget {
-  const _RecheckTile({required this.record});
-
-  final CheckRecord record;
+  final Quote quote;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final c = JobColors.of(context);
     final text = Theme.of(context).textTheme;
-    final c = SpotColors.of(context);
-    return SurfaceCard(
+    final now = ref.watch(clockProvider)();
+    final when = switch (quote.status) {
+      QuoteStatus.draft => 'Drafted ${timeAgo(quote.createdAt, now: now)}',
+      QuoteStatus.sent => 'Sent ${timeAgo(quote.share!.sentAt, now: now)}',
+      QuoteStatus.viewed =>
+        'Viewed ${timeAgo(quote.response.lastViewedAt ?? now, now: now)}',
+      QuoteStatus.approved ||
+      QuoteStatus.declined => timeAgo(quote.closedAt ?? now, now: now),
+    };
+    final subtitle = [
+      if (quote.customer.name.isNotEmpty && quote.title.isNotEmpty) quote.title,
+      '#${quote.number}',
+      when,
+    ].join(' · ');
+    return Panel(
       padding: const EdgeInsets.all(12),
-      borderColor: c.brand,
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute<void>(builder: (_) => QuoteScreen(quoteId: quote.id)),
+      ),
       child: Row(
         children: [
-          StoredPhoto(photoKey: record.photoKeys.firstOrNull, size: 52),
-          const SizedBox(width: 14),
+          quote.photoKeys.isEmpty
+              ? const JobIcon()
+              : PhotoThumb(quote.photoKeys.first),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(record.site.label, style: text.titleSmall),
                 Text(
-                  'Checked ${formatDate(record.createdAt)}. See if it changed.',
+                  quote.displayName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: text.titleSmall,
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  subtitle,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                   style: text.bodySmall,
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 8),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              minimumSize: const Size(0, 42),
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+          const SizedBox(width: 10),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              MoneyText(
+                quote.headlineTotalCents,
+                size: 19,
+                color: quote.status == QuoteStatus.declined
+                    ? c.inkFaint
+                    : c.ink,
+              ),
+              const SizedBox(height: 6),
+              StatusPill(quote),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EmptyState extends StatelessWidget {
+  const _EmptyState({required this.onSample});
+
+  final void Function(SampleJob) onSample;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = JobColors.of(context);
+    final text = Theme.of(context).textTheme;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 24, 24, 120),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 84,
+            height: 84,
+            decoration: BoxDecoration(
+              color: c.accentSoft,
+              borderRadius: BorderRadius.circular(24),
             ),
-            onPressed: () => startCheck(context, ref, recheckOf: record),
-            child: const Text('Recheck'),
+            child: Icon(
+              Icons.photo_camera_outlined,
+              size: 40,
+              color: c.accentInk,
+            ),
+          ),
+          const SizedBox(height: 20),
+          Text(
+            'Your first quote is a few photos away.',
+            textAlign: TextAlign.center,
+            style: text.headlineSmall,
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'On your next walkthrough, tap New quote and snap the job. No '
+            'job handy? Try one of these:',
+            textAlign: TextAlign.center,
+            style: text.bodyMedium?.copyWith(color: c.inkMuted),
+          ),
+          const SizedBox(height: 18),
+          Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final s in SampleJob.values)
+                ActionChip(
+                  avatar: Icon(
+                    Icons.play_arrow_rounded,
+                    size: 18,
+                    color: c.ink,
+                  ),
+                  label: Text(s.title),
+                  onPressed: () => onSample(s),
+                ),
+            ],
           ),
         ],
       ),

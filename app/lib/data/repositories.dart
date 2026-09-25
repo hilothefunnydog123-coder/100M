@@ -1,10 +1,10 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:spotcheck_core/spotcheck_core.dart';
+import 'package:jobwalk_core/jobwalk_core.dart';
 
 import 'blob_store.dart';
-import 'models.dart';
+import 'settings.dart';
 
 class SettingsRepository {
   SettingsRepository(this._store);
@@ -18,7 +18,7 @@ class SettingsRepository {
       try {
         return AppSettings.fromJson(jsonDecode(raw) as Map<String, Object?>);
       } on Object {
-        // Fall through to fresh settings.
+        // Unreadable settings: start fresh rather than crash.
       }
     }
     final fresh = AppSettings(installId: newId('inst'));
@@ -30,26 +30,27 @@ class SettingsRepository {
       _store.writeText(_key, jsonEncode(settings.toJson()));
 }
 
-class HistoryRepository {
-  HistoryRepository(this._store);
+class QuoteRepository {
+  QuoteRepository(this._store);
 
-  static const _key = 'history.json';
+  static const _key = 'quotes.json';
   final BlobStore _store;
 
-  Future<List<CheckRecord>> load() async {
+  /// Newest first.
+  Future<List<Quote>> load() async {
     final raw = await _store.readText(_key);
     if (raw == null) return [];
     try {
       final list = jsonDecode(raw) as List;
-      return [for (final item in list) ?CheckRecord.tryParse(item)]
+      return [for (final item in list) ?Quote.fromJson(item)]
         ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
     } on Object {
       return [];
     }
   }
 
-  Future<void> save(List<CheckRecord> records) =>
-      _store.writeText(_key, jsonEncode([for (final r in records) r.toJson()]));
+  Future<void> save(List<Quote> quotes) =>
+      _store.writeText(_key, jsonEncode([for (final q in quotes) q.toJson()]));
 
   Future<void> savePhoto(String key, Uint8List bytes) =>
       _store.writeBytes('photo_$key', bytes);

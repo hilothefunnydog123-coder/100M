@@ -1,7 +1,7 @@
-name: spotcheck_server
+name: jobwalk_server
 description: >-
-  SpotCheck analysis API. A stateless proxy that validates checks, asks
-  Claude for a structured assessment, and applies the shared safety rules.
+  Jobwalk API: drafts quotes from job photos with Claude, hosts the quote
+  links customers approve, and serves the landing page.
 version: 0.1.0
 publish_to: none
 
@@ -10,11 +10,13 @@ environment:
 
 dependencies:
   args: ^2.7.0
+  crypto: ^3.0.6
   http: ^1.6.0
+  image: ^4.10.1
+  jobwalk_core:
+    path: ../packages/core
   shelf: ^1.4.2
   shelf_router: ^1.1.4
-  spotcheck_core:
-    path: ../packages/core
 
 dev_dependencies:
   lints: ^6.1.0
