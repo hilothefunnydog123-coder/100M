@@ -203,6 +203,64 @@ void main() {
       expect(await used(), 0);
     });
 
+    test('a phone that lost the connection can ask how it went', () async {
+      final gate = Completer<void>();
+      h.drafter.behavior = (r) async {
+        await gate.future;
+        return Draft(SampleJob.livingRoom.draft, DraftStats());
+      };
+      final running = h.app.drafts.create(
+        dana.account,
+        draftRequest(),
+        idempotencyKey: 'draft-key-0100',
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(await h.app.drafts.status(dana.account, 'draft-key-0100'), {
+        'state': 'running',
+      });
+      gate.complete();
+      await running;
+      final done = await h.app.drafts.status(dana.account, 'draft-key-0100');
+      expect(done['state'], 'done');
+      expect((done['draft']! as Map)['items'], isNotEmpty);
+
+      expect(
+        (await apiError(
+          () => h.app.drafts.status(dana.account, 'draft-key-9999'),
+        )).status,
+        404,
+      );
+      final sam = await h.owner('sam@example.com');
+      expect(
+        (await apiError(
+          () => h.app.drafts.status(sam.account, 'draft-key-0100'),
+        )).status,
+        404,
+        reason: 'keys are per business',
+      );
+    });
+
+    test('a draft abandoned by a restart reads as failed', () async {
+      await h.db.execute(
+        'INSERT INTO drafts (business_id, idempotency_key, state, created_at) '
+        "VALUES (@b, 'draft-key-0200', 'running', @at:timestamptz)",
+        {
+          'b': dana.account.businessId,
+          'at': h.now.subtract(const Duration(minutes: 30)),
+        },
+      );
+      expect(await h.app.drafts.status(dana.account, 'draft-key-0200'), {
+        'state': 'failed',
+      });
+      // Retrying the same key takes it over.
+      final draft = await h.app.drafts.create(
+        dana.account,
+        draftRequest(),
+        idempotencyKey: 'draft-key-0200',
+      );
+      expect(draft['draft'], isNotNull);
+    });
+
     test('rejects bad idempotency keys', () async {
       final e = await apiError(
         () => h.app.drafts.create(

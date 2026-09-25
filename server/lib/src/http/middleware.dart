@@ -75,6 +75,7 @@ final _patterns = [
   (RegExp(r'^/v1/quotes/[^/]+/publish$'), '/v1/quotes/:id/publish'),
   (RegExp(r'^/v1/photos/[^/]+$'), '/v1/photos/:id'),
   (RegExp(r'^/v1/team/[^/]+$'), '/v1/team/:id'),
+  (RegExp(r'^/v1/drafts/[^/]+$'), '/v1/drafts/:key'),
   (RegExp(r'^/admin/jobs/[^/]+/retry$'), '/admin/jobs/:id/retry'),
 ];
 

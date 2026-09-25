@@ -39,6 +39,7 @@ class Limits {
     this.verifyPerIp = const (30, Duration(minutes: 1)),
     this.publicPerIp = const (60, Duration(seconds: 10)),
     this.draftsPerBusiness = const (10, Duration(minutes: 3)),
+    this.viewsPerVisitor = const (1, Duration(minutes: 10)),
     this.apiPerUser = const (300, Duration(milliseconds: 200)),
   });
 
@@ -49,6 +50,7 @@ class Limits {
     verifyPerIp: (100000, Duration(milliseconds: 1)),
     publicPerIp: (100000, Duration(milliseconds: 1)),
     draftsPerBusiness: (100000, Duration(milliseconds: 1)),
+    viewsPerVisitor: (100000, Duration(milliseconds: 1)),
     apiPerUser: (100000, Duration(milliseconds: 1)),
   );
 
@@ -57,6 +59,7 @@ class Limits {
   final (int, Duration) verifyPerIp;
   final (int, Duration) publicPerIp;
   final (int, Duration) draftsPerBusiness;
+  final (int, Duration) viewsPerVisitor;
   final (int, Duration) apiPerUser;
 }
 
@@ -213,6 +216,7 @@ class JobwalkApp {
       quotes: quotes,
       billing: billing,
       perIp: shared(limits.publicPerIp),
+      viewsPerVisitor: shared(limits.viewsPerVisitor),
       metrics: metrics,
       model: config.fakeModel ? 'demo' : config.drafter.model,
       version: serverVersion,

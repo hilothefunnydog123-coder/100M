@@ -187,6 +187,29 @@ class DraftService {
     }
   }
 
+  /// Where the draft made with [key] stands, for a phone whose connection
+  /// dropped while it waited (load balancers cut long requests):
+  /// `running`, `done` with the draft, or `failed`.
+  Future<Map<String, Object?>> status(Account a, String key) async {
+    if (!_keyPattern.hasMatch(key)) throw ApiError.notFound('No such draft.');
+    final row = await _db.one(
+      'SELECT state, response, created_at FROM drafts '
+      'WHERE business_id = @b AND idempotency_key = @k',
+      {'b': a.businessId, 'k': key},
+    );
+    if (row == null) throw ApiError.notFound('No such draft.');
+    final state = row['state'] as String;
+    if (state == 'done' && row['response'] != null) {
+      return {'state': 'done', ...asMap(row['response'])};
+    }
+    // Its instance went away mid-draft (a deploy): it will never finish.
+    final started = row['created_at'] as DateTime;
+    if (state == 'running' && _clock().difference(started) > timeout * 2) {
+      return {'state': 'failed'};
+    }
+    return {'state': state == 'done' ? 'failed' : state};
+  }
+
   Future<BusinessPlan> _plan(String businessId) async => BusinessPlan.fromRow(
     (await _db.one(
       'SELECT plan, plan_status, trial_drafts_used FROM businesses '

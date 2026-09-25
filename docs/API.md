@@ -147,6 +147,12 @@ Takes up to about three minutes. Send `Idempotency-Key: <random>`: a retry
 with the same key returns the first draft (`"replayed": true`) without a
 second charge, or 409 `in_progress` while it's still running.
 
+`GET /v1/drafts/<key>` → `{"state": "running"}`, `{"state": "failed"}`, or
+`{"state": "done", "draft": {...}, ...}`. For a phone whose request was cut
+off (lost signal, or a load balancer that closes quiet connections): the
+draft keeps going on the server, so poll this instead of starting over.
+The app does this on its own.
+
 Trial businesses get 25 usable drafts (photos that can't be quoted don't
 count), then 402 `upgrade_required`. Paid plans have a fair-use ceiling
 (429 `usage_limit`).
@@ -173,7 +179,8 @@ dashboard (payouts, refunds).
 Server-rendered HTML, no JavaScript:
 
 - `GET /q/<public_id>`: the quote. Counts a view unless it's a preview
-  (`?preview=1`) or a link-preview bot.
+  (`?preview=1`), a link-preview bot, or the same visitor again within 10
+  minutes.
 - `POST /q/<public_id>/approve` (form: `option`, `name`, `agree=yes`)
 - `POST /q/<public_id>/decline` (form: `reason`)
 - `POST /q/<public_id>/deposit`: redirects to Stripe Checkout.

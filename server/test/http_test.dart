@@ -229,6 +229,12 @@ void main() {
         expect((await jsonOf(again))['replayed'], isTrue);
         expect(h.drafter.calls, 1);
 
+        final status = await jsonOf(
+          await h.send('GET', '/v1/drafts/key-000001', token: token),
+        );
+        expect(status['state'], 'done');
+        expect(status['draft'], isNotNull);
+
         final invalid = await h.send(
           'POST',
           '/v1/drafts',
@@ -423,6 +429,30 @@ void main() {
         final html = await (await h.send('GET', '/sample')).readAsString();
         expect(html, contains('This is a sample quote'));
         expect(html, isNot(contains('name="agree"')));
+      });
+
+      test('a visitor counts once per visit, not per refresh', () async {
+        final strict = Harness(
+          testDb(),
+          limits: const Limits(
+            publicPerIp: (1000, Duration(seconds: 1)),
+            codePerIp: (1000, Duration(seconds: 1)),
+            verifyPerIp: (1000, Duration(seconds: 1)),
+            viewsPerVisitor: (1, Duration(minutes: 10)),
+          ),
+        );
+        final dana = await strict.owner('dana@example.com');
+        final id = await strict.sendQuote(dana.account, strict.sampleQuote());
+        for (var i = 0; i < 3; i++) {
+          await strict.send('GET', '/q/$id', headers: {'user-agent': browser});
+        }
+        await strict.send(
+          'GET',
+          '/q/$id',
+          headers: {'user-agent': browser, 'x-forwarded-for': '203.0.113.99'},
+        );
+        final view = await strict.quotes.open(id, countView: false);
+        expect(view!.response.views, 2, reason: 'two visitors');
       });
 
       test('form posts are rate limited per address', () async {

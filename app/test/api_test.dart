@@ -199,4 +199,84 @@ void main() {
     expect(requests.first.headers['authorization'], 'Bearer jws_token');
     expect(requests.last.headers.containsKey('authorization'), isFalse);
   });
+
+  group('a draft whose request is cut off', () {
+    DraftRequest request() => DraftRequest(
+      profile: const BusinessProfile(name: 'Shine'),
+      rates: const Rates(),
+      photos: [
+        JobPhoto(bytes: Uint8List.fromList([1, 2, 3]), mediaType: 'image/jpeg'),
+      ],
+    );
+
+    ServerClient polling(http.Response Function(http.Request) reply) =>
+        ServerClient(
+          baseUrl: Uri.parse('https://api.example.com'),
+          token: () => 'jws_token',
+          draftPollEvery: Duration.zero,
+          client: MockClient((r) async {
+            requests.add(r);
+            return reply(r);
+          }),
+        );
+
+    test('is fetched by its key once the server finishes it', () async {
+      var polls = 0;
+      final c = polling((r) {
+        if (r.method == 'POST') throw http.ClientException('connection closed');
+        polls++;
+        return polls == 1
+            ? json(200, {'state': 'running'})
+            : json(200, {
+                'state': 'done',
+                'draft': SampleJob.driveway.draft.toJson(),
+                'model': 'claude-opus-5-5',
+              });
+      });
+      final result = await c.draft(request(), idempotencyKey: 'draft_abc12345');
+      expect(result.draft.items, isNotEmpty);
+      expect(requests.map((r) => '${r.method} ${r.url.path}'), [
+        'POST /v1/drafts',
+        'GET /v1/drafts/draft_abc12345',
+        'GET /v1/drafts/draft_abc12345',
+      ]);
+    });
+
+    test('a proxy timeout, then a failed draft, asks to retry', () async {
+      final c = polling(
+        (r) => r.method == 'POST'
+            ? http.Response('<html>Gateway Timeout</html>', 504)
+            : json(200, {'state': 'failed'}),
+      );
+      await expectLater(
+        c.draft(request(), idempotencyKey: 'draft_abc12345'),
+        throwsA(
+          isA<ApiError>().having(
+            (e) => e.message,
+            'message',
+            contains("couldn't finish"),
+          ),
+        ),
+      );
+    });
+
+    test('a request that never arrived keeps its own error', () async {
+      final c = polling((r) {
+        if (r.method == 'POST') throw http.ClientException('no signal');
+        return json(404, {
+          'error': {'code': 'not_found', 'message': 'No such draft.'},
+        });
+      });
+      await expectLater(
+        c.draft(request(), idempotencyKey: 'draft_abc12345'),
+        throwsA(isA<ApiError>().having((e) => e.offline, 'offline', isTrue)),
+      );
+    });
+
+    test('without a key there is nothing to ask about', () async {
+      final c = polling((r) => throw http.ClientException('no signal'));
+      await expectLater(c.draft(request()), throwsA(isA<ApiError>()));
+      expect(requests, hasLength(1));
+    });
+  });
 }

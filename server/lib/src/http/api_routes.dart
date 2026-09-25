@@ -67,6 +67,7 @@ class ApiRoutes {
     ..put('/v1/photos/<id>', _authWith(_putPhoto))
     ..get('/v1/photos/<id>', _authWith(_getPhoto))
     ..post('/v1/drafts', _auth(_draft))
+    ..get('/v1/drafts/<key>', _authWith(_draftStatus))
     // Money
     ..post('/v1/billing/checkout', _auth(_checkout))
     ..post('/v1/billing/portal', _auth(_portal))
@@ -237,6 +238,9 @@ class ApiRoutes {
     );
     return jsonResponse(200, draft);
   }
+
+  Future<Response> _draftStatus(Request r, Account a, String key) async =>
+      jsonResponse(200, await drafts.status(a, key));
 
   Future<Response> _checkout(Request r, Account a) async {
     final body = await readJson(r);

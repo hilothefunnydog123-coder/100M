@@ -23,6 +23,7 @@ class PublicRoutes {
     required this.quotes,
     required this.billing,
     required this.perIp,
+    required this.viewsPerVisitor,
     required this.metrics,
     required this.model,
     required this.version,
@@ -40,6 +41,10 @@ class PublicRoutes {
 
   /// Customer form posts and signups per address.
   final Limiter perIp;
+
+  /// How often one visitor's visits to a quote count as views, so a
+  /// refresh isn't a second view and repeated hits can't pile up writes.
+  final Limiter viewsPerVisitor;
   final Metrics metrics;
   final String model;
   final String version;
@@ -194,10 +199,14 @@ class PublicRoutes {
 
   Future<Response> _quote(Request r, String id) async {
     final params = r.url.queryParameters;
-    final countView =
+    var countView =
         params['preview'] != '1' &&
         params['done'] == null &&
         !_looksLikeBot(r.headers['user-agent'] ?? '');
+    if (countView && QuoteService.publicIdPattern.hasMatch(id)) {
+      final ip = clientIp(r, trustedProxies: trustedProxies);
+      countView = await viewsPerVisitor.acquire('view:$id:$ip') == null;
+    }
     final view = await quotes.open(id, countView: countView);
     if (view == null) throw ApiError.notFound();
     return htmlResponse(

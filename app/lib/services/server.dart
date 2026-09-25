@@ -25,6 +25,7 @@ class ServerClient implements JobwalkClient {
     http.Client? client,
     this.timeout = const Duration(seconds: 30),
     this.draftTimeout = const Duration(seconds: 190),
+    this.draftPollEvery = const Duration(seconds: 3),
   }) : _token = token,
        _onUnauthorized = onUnauthorized ?? (() {}),
        _client = client ?? http.Client();
@@ -32,6 +33,9 @@ class ServerClient implements JobwalkClient {
   final Uri baseUrl;
   final Duration timeout;
   final Duration draftTimeout;
+
+  /// How often to ask about a draft whose request was cut off.
+  final Duration draftPollEvery;
   final String? Function() _token;
   final void Function() _onUnauthorized;
   final http.Client _client;
@@ -220,18 +224,64 @@ class ServerClient implements JobwalkClient {
     SampleJob? sample,
     String? idempotencyKey,
   }) async {
-    final json = await _json(
-      'POST',
-      '/v1/drafts',
-      body: request.toJson(),
-      headers: {'idempotency-key': ?idempotencyKey},
-      timeout: draftTimeout,
-    );
+    final started = DateTime.now();
+    Map<String, Object?> json;
+    try {
+      json = await _json(
+        'POST',
+        '/v1/drafts',
+        body: request.toJson(),
+        headers: {'idempotency-key': ?idempotencyKey},
+        timeout: draftTimeout,
+      );
+    } on ApiError catch (e) {
+      // Load balancers cut requests that stay quiet for a minute or two,
+      // and a phone can lose signal while it waits. The draft carries on
+      // on the server; ask for it by its key instead of starting over.
+      final lost =
+          e.offline ||
+          e.code == 'in_progress' ||
+          (e.code.isEmpty && (e.status == 502 || e.status == 504));
+      if (idempotencyKey == null || !lost) rethrow;
+      json = await _awaitDraft(
+        idempotencyKey,
+        deadline: started.add(draftTimeout + const Duration(seconds: 60)),
+        original: e,
+      );
+    }
     return DraftResult(
       draft: AiDraft.fromJson(json['draft'] as Map<String, Object?>),
       model: json['model'] as String? ?? '',
       demo: json['demo'] == true,
     );
+  }
+
+  Future<Map<String, Object?>> _awaitDraft(
+    String key, {
+    required DateTime deadline,
+    required ApiError original,
+  }) async {
+    while (DateTime.now().isBefore(deadline)) {
+      await Future<void>.delayed(draftPollEvery);
+      final Map<String, Object?> status;
+      try {
+        status = await _json('GET', '/v1/drafts/$key');
+      } on ApiError catch (e) {
+        // Never reached the server: the original error says why.
+        if (e.status == 404) throw original;
+        if (e.offline) continue;
+        rethrow;
+      }
+      switch (status['state']) {
+        case 'done':
+          return status;
+        case 'failed':
+          throw const ApiError(
+            "We couldn't finish this draft. Please try again.",
+          );
+      }
+    }
+    throw original;
   }
 
   // ---------------------------------------------------------------------------
