@@ -32,10 +32,10 @@ Details: [docs/ACCURACY.md](docs/ACCURACY.md).
 | Path | What |
 |---|---|
 | `packages/core` | Quote model, pricing math, AI draft parsing, the customer-facing quote, price memory. Pure Dart, shared by app and server. |
-| `server` | Drafts quotes from photos with Claude, hosts quote links and the customer approval page, landing page with a beta waitlist, accuracy harness. |
+| `server` | The backend: accounts with emailed sign-in codes, teams, quote sync, AI drafting with Claude (metered, idempotent), customer quote pages with an e-signature audit trail, Stripe subscriptions and Connect deposits, email notifications and reminders from a Postgres job queue, metrics, admin. |
 | `app` | Flutter app for iOS, Android, and web. |
 | `eval` | How to score drafts against real invoices. |
-| `docs` | [Business plan](docs/BUSINESS.md), [accuracy](docs/ACCURACY.md), [launch checklist](docs/LAUNCH.md). |
+| `docs` | [Business plan](docs/BUSINESS.md), [accuracy](docs/ACCURACY.md), [API](docs/API.md), [deploying](docs/DEPLOY.md), [launch checklist](docs/LAUNCH.md). |
 
 ## Try it
 
@@ -48,19 +48,15 @@ cd app
 flutter run -d chrome        # or an iOS simulator / Android emulator
 ```
 
-With the server (sample drafts, no API key needed):
+The backend (Postgres and the API with sample drafts, no API key needed):
 
 ```sh
-cd server
-JOBWALK_FAKE_MODEL=true dart run bin/server.dart     # http://localhost:8080
-cd ../app
-flutter run -d chrome --dart-define=API_BASE_URL=http://localhost:8080
+docker compose up --build        # http://localhost:8080
 ```
 
-The server's landing page is at `/` and a sample customer quote at
-`/sample`. For real drafts, set `ANTHROPIC_API_KEY` instead of
-`JOBWALK_FAKE_MODEL`, and `JOBWALK_PUBLIC_URL` to the address customers
-will open. See [docs/LAUNCH.md](docs/LAUNCH.md) for deployment.
+Sign-in codes are printed in the API's log (`EMAIL_PROVIDER=log`). The
+landing page is at `/` and a sample customer quote at `/sample`. For real drafts, set `ANTHROPIC_API_KEY` and drop
+`JOBWALK_FAKE_MODEL`. Deploying: [docs/DEPLOY.md](docs/DEPLOY.md).
 
 ## Development
 
@@ -68,9 +64,16 @@ Each package runs the same checks as CI:
 
 ```sh
 cd packages/core && dart test
-cd server && dart test
+cd server && dart test          # needs Postgres (below)
 cd app && flutter test
 ```
 
+Server tests create a throwaway database per test file on
+`TEST_DATABASE_URL` (default `postgres://postgres:postgres@localhost:5432/postgres`,
+e.g. `docker compose up db`). Without a server they're skipped, unless
+`REQUIRE_DB=1` as in CI. Run the API outside Docker with
+`cd server && JOBWALK_FAKE_MODEL=true dart run bin/server.dart`.
+
 `dart format`, `dart analyze --fatal-infos` (`flutter analyze` in `app`),
-and a web build also run in CI.
+a web build, and a Docker build that boots the image against Postgres
+also run in CI.

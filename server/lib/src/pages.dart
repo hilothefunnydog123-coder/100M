@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:jobwalk_core/jobwalk_core.dart';
 
-import 'store.dart';
+import 'services/quotes.dart';
 
 const _escape = HtmlEscape();
 
@@ -141,6 +141,7 @@ details.decline{margin-top:18px;color:var(--muted)}
 details.decline summary{cursor:pointer;font-weight:600}
 details.decline form{margin-top:12px;display:grid;gap:10px}
 .foot{text-align:center;color:var(--faint);font-size:13px;margin:22px 0 40px}
+.paid{margin-top:10px;font-weight:700}
 .foot a{color:var(--muted)}
 @media print{body{background:#fff}.wrap{padding:0}.doc{box-shadow:none;padding:0}
 .approve,details.decline,.foot,.banner .btn{display:none}}
@@ -148,15 +149,15 @@ details.decline form{margin-top:12px;display:grid;gap:10px}
 
 /// The page a customer opens from the texted link.
 String quotePage(
-  QuoteRecord record, {
+  CustomerView view, {
   required DateTime now,
   required String homeHref,
   String? flash,
   String? error,
   bool sample = false,
 }) {
-  final q = record.quote;
-  final r = record.response;
+  final q = view.quote;
+  final r = view.response;
   final approved = r.approvedAt != null;
   final expired = !approved && now.isAfter(q.validUntil);
   final canApprove = !approved && !expired && !sample;
@@ -212,7 +213,25 @@ String quotePage(
       '${esc(chosen.name)}, ${Money.format(chosen.totalCents)}. '
       '${esc(q.business.name)} will be in touch to schedule the work.',
     );
-    if (q.business.paymentLink.isNotEmpty && chosen.depositCents > 0) {
+    final paidAt = view.depositPaidAt;
+    if (paidAt != null) {
+      b.writeln(
+        '<div class="paid">Deposit of '
+        '${Money.format(view.depositPaidCents ?? chosen.depositCents)} paid '
+        '${formatDay(paidAt)}. Thank you!</div>',
+      );
+    } else if (flash == 'deposit') {
+      b.writeln(
+        '<div class="paid">Thanks! Your payment is processing. You\'ll get a '
+        'receipt by email.</div>',
+      );
+    } else if (view.canPayDeposit) {
+      b.writeln(
+        '<form method="post" action="${esc('/q/${view.publicId}/deposit')}">'
+        '<button class="btn accent block" type="submit">Pay the '
+        '${Money.format(chosen.depositCents)} deposit by card</button></form>',
+      );
+    } else if (q.business.paymentLink.isNotEmpty && chosen.depositCents > 0) {
       b.writeln(
         '<a class="btn accent block" href="${esc(q.business.paymentLink)}" '
         'target="_blank" rel="noopener noreferrer">Pay the '
@@ -244,7 +263,7 @@ String quotePage(
 
   b.writeln(
     canApprove
-        ? '<form method="post" action="${esc('/q/${record.id}/approve')}" '
+        ? '<form method="post" action="${esc('/q/${view.publicId}/approve')}" '
               'class="${single ? 'single' : ''}" id="approve">'
         : '<div class="${single ? 'single' : ''}">',
   );
@@ -320,7 +339,7 @@ String quotePage(
     b.writeln('</div></form>');
     b.writeln(
       '<details class="decline"><summary>Not ready to approve?</summary>'
-      '<form method="post" action="${esc('/q/${record.id}/decline')}">'
+      '<form method="post" action="${esc('/q/${view.publicId}/decline')}">'
       '<label for="reason">Anything ${esc(q.business.name)} should know? '
       '(optional)</label>'
       '<textarea id="reason" name="reason" rows="3" maxlength="500"></textarea>'

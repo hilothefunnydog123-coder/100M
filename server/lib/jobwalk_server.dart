@@ -1,13 +1,30 @@
 /// The Jobwalk API server.
 library;
 
-export 'src/api.dart';
+export 'src/app.dart';
+export 'src/background.dart';
 export 'src/claude_client.dart';
+export 'src/common.dart';
 export 'src/config.dart';
+export 'src/db/database.dart';
+export 'src/db/migrations.dart';
+export 'src/db/pg_limiter.dart';
 export 'src/draft_schema.dart';
 export 'src/drafter.dart';
 export 'src/eval.dart';
+export 'src/integrations/email.dart';
+export 'src/integrations/object_store.dart';
+export 'src/integrations/stripe.dart';
+export 'src/jobs.dart';
 export 'src/limits.dart';
+export 'src/metrics.dart';
 export 'src/pages.dart';
 export 'src/prompt.dart';
-export 'src/store.dart';
+export 'src/services/accounts.dart';
+export 'src/services/billing.dart';
+export 'src/services/drafts.dart';
+export 'src/services/maintenance.dart';
+export 'src/services/outbox.dart';
+export 'src/services/photos.dart';
+export 'src/services/plans.dart';
+export 'src/services/quotes.dart';

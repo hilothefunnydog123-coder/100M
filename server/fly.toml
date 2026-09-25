@@ -1,0 +1,44 @@
+# Fly.io: fly launch --no-deploy --copy-config, then set secrets (see
+# docs/DEPLOY.md) and deploy from the repository root:
+#   fly deploy --config server/fly.toml --dockerfile server/Dockerfile .
+app = "jobwalk-api"
+primary_region = "iad"
+kill_signal = "SIGTERM"
+# Drafts can take up to three minutes; let them finish on deploys.
+kill_timeout = "200s"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[deploy]
+  release_command = "/app/migrate"
+  strategy = "rolling"
+
+[env]
+  JOBWALK_ENV = "production"
+  JOBWALK_MIGRATE_ON_START = "false"
+  JOBWALK_TRUSTED_PROXIES = "1"
+  STORAGE = "s3"
+  PORT = "8080"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "off"
+  min_machines_running = 2
+
+  [http_service.concurrency]
+    type = "requests"
+    soft_limit = 200
+    hard_limit = 400
+
+  [[http_service.checks]]
+    grace_period = "10s"
+    interval = "15s"
+    method = "GET"
+    path = "/readyz"
+    timeout = "5s"
+
+[[vm]]
+  size = "shared-cpu-2x"
+  memory = "1gb"

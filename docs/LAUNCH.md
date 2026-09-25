@@ -9,28 +9,16 @@
 
 ## 2. Server
 
-The server is a single binary (`server/Dockerfile`) that stores published
-quotes and waitlist signups as files under `JOBWALK_DATA_DIR`. It needs one
-instance with a persistent disk: a small VM, or Fly.io or Railway with a
-volume. Before running several instances, move storage to Postgres by
-implementing `QuoteStore`.
-
-```sh
-docker build -f server/Dockerfile -t jobwalk-api .
-docker run -p 8080:8080 -v jobwalk-data:/data \
-  -e ANTHROPIC_API_KEY=... \
-  -e JOBWALK_PUBLIC_URL=https://jobwalk.app \
-  -e JOBWALK_CORS_ORIGINS=https://app.jobwalk.app \
-  jobwalk-api
-```
+Follow [DEPLOY.md](DEPLOY.md): Postgres, the API image, Resend, an R2 or
+S3 bucket, and optionally Stripe.
 
 - [ ] Domain and HTTPS. Quote links are `JOBWALK_PUBLIC_URL/q/<id>`.
-- [ ] Back up the data volume daily.
-- [ ] Watch the JSON logs: `draft` events carry latency, tokens, and
-      estimated cost; `draft_failed`, `rate_limited`, and `overloaded` are
-      the ones to alert on.
-- [ ] Optional settings: `JOBWALK_EFFORT` (default `high`),
-      `JOBWALK_MODEL`, and rate limits (`JOBWALK_RATE_LIMIT_*`).
+- [ ] `JOBWALK_ENV=production` and every secret set; `/readyz` is green.
+- [ ] Point-in-time recovery on Postgres; versioning on the photo bucket.
+- [ ] Alerts on the JSON logs (`error`, `draft_failed`, `overloaded`,
+      `job_failed`, `stripe_error`) and on `/metrics`.
+- [ ] A review account for the app stores (`JOBWALK_REVIEW_EMAIL`,
+      `JOBWALK_REVIEW_CODE`).
 
 ## 3. App
 
@@ -50,12 +38,13 @@ docker run -p 8080:8080 -v jobwalk-data:/data \
 
 ## 4. Getting paid
 
-- [ ] For the beta, each contractor adds their own Stripe, Square, or
-      PayPal payment link in Settings; customers see a Pay deposit button
-      after approving.
-- [ ] Later: Stripe Connect for built-in deposits and a take rate.
-- [ ] Jobwalk's own subscription: sell plans on the web, not through
-      in-app purchase, and keep the app free to download.
+- [ ] Stripe products for Pro and Crew, the customer portal, and both
+      webhook endpoints ([DEPLOY.md](DEPLOY.md#stripe)).
+- [ ] Connect with Express accounts: contractors take card deposits
+      through Jobwalk (1% platform fee plus card processing). A payment
+      link from Settings still works for anyone who doesn't connect.
+- [ ] Sell plans on the web (Stripe Checkout), not through in-app
+      purchase, and keep the app free to download.
 
 ## 5. Beta operations
 
@@ -64,11 +53,10 @@ docker run -p 8080:8080 -v jobwalk-data:/data \
 - [ ] Weekly review: accuracy (change from draft), time to send, approval
       rate, and every failed draft.
 
-## Known limits of the MVP
+## Known limits
 
-- Quotes live on the phone; there are no accounts or sync yet, so a lost
-  phone loses its quotes (links already sent keep working).
-- Status updates arrive when the app refreshes (on open, and with pull to
-  refresh); there are no push notifications yet.
+- Status updates reach the app when it syncs (on open, pull to refresh,
+  and every minute while open) and by email; there are no push
+  notifications yet.
 - The quote link is unguessable but not password-protected: anyone who has
   it can view it, like most quote and invoice links.

@@ -9,6 +9,17 @@ jobs:
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
     steps:
       - uses: actions/checkout@v4
 
@@ -28,6 +39,9 @@ jobs:
 
       - name: Server
         working-directory: server
+        env:
+          TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
+          REQUIRE_DB: '1'
         run: |
           dart pub get
           dart format --output=none --set-exit-if-changed lib bin test
@@ -45,3 +59,36 @@ jobs:
       - name: Web build (demo mode)
         working-directory: app
         run: flutter build web --release --no-web-resources-cdn
+
+  docker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build the API image
+        run: >-
+          docker build -f server/Dockerfile
+          --build-arg VERSION=${{ github.sha }} -t jobwalk-api .
+
+      - name: Boot, migrate, serve, and stop cleanly
+        run: |
+          docker network create jw
+          docker run -d --name db --network jw \
+            -e POSTGRES_PASSWORD=postgres postgres:16-alpine
+          docker run -d --name api --network jw -p 8080:8080 \
+            -e DATABASE_URL='postgres://postgres:postgres@db:5432/postgres' \
+            -e JOBWALK_FAKE_MODEL=true -e JOBWALK_TRUSTED_PROXIES=0 \
+            jobwalk-api
+          for i in $(seq 1 60); do
+            curl -sf localhost:8080/readyz && break
+            sleep 1
+          done
+          curl -sf localhost:8080/readyz
+          curl -sf localhost:8080/sample > /dev/null
+          curl -sf -X POST localhost:8080/v1/auth/code \
+            -H 'content-type: application/json' \
+            -d '{"email":"ci@example.com"}'
+          docker stop api
+          docker logs api | tail -5
+          test "$(docker inspect api --format '{{.State.ExitCode}}')" = 0

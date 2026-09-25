@@ -106,3 +106,19 @@ class ConcurrencyLimiter {
     }
   }
 }
+
+/// A rate limiter that may be shared between instances.
+abstract interface class Limiter {
+  /// Takes a token for [key]. Returns null when allowed, or how long to
+  /// wait before trying again.
+  Future<Duration?> acquire(String key);
+}
+
+class MemoryLimiter implements Limiter {
+  MemoryLimiter(this.limiter);
+
+  final RateLimiter limiter;
+
+  @override
+  Future<Duration?> acquire(String key) async => limiter.tryAcquire(key);
+}

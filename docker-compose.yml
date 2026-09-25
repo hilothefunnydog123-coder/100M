@@ -1,0 +1,45 @@
+# Jobwalk on your machine: Postgres and the API with sample drafts.
+#   docker compose up --build
+#   open http://localhost:8080 (landing) and http://localhost:8080/sample
+# Sign-in codes are printed in the server log (EMAIL_PROVIDER=log).
+# For real drafts, set ANTHROPIC_API_KEY and remove JOBWALK_FAKE_MODEL.
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: jobwalk
+      POSTGRES_PASSWORD: jobwalk
+      POSTGRES_DB: jobwalk
+    volumes:
+      - db:/var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U jobwalk]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    ports:
+      - "5432:5432"
+
+  api:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      JOBWALK_ENV: development
+      DATABASE_URL: postgres://jobwalk:jobwalk@db:5432/jobwalk?sslmode=disable
+      JOBWALK_PUBLIC_URL: http://localhost:8080
+      JOBWALK_FAKE_MODEL: "true"
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      EMAIL_PROVIDER: log
+      JOBWALK_TRUSTED_PROXIES: "0"
+    volumes:
+      - objects:/data/objects
+    ports:
+      - "8080:8080"
+
+volumes:
+  db:
+  objects:
