@@ -1,0 +1,16 @@
+# Dart / Flutter
+.dart_tool/
+build/
+.packages
+*.iml
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Local secrets and scratch output
+.env
+.env.*
+!.env.example
+eval/out/
+eval/data/
+*.log

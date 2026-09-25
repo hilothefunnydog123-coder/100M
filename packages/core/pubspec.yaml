@@ -1,0 +1,14 @@
+name: spotcheck_core
+description: >-
+  Shared domain model for SpotCheck: body sites, the symptom intake catalog,
+  deterministic safety rules, and the check result model used by both the
+  Flutter app and the analysis server.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.9.0
+
+dev_dependencies:
+  lints: ^6.1.0
+  test: ^1.32.0
