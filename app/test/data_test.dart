@@ -1,7 +1,9 @@
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:jobwalk/data/blob_store.dart';
+import 'package:jobwalk/data/blob_store_file.dart';
 import 'package:jobwalk/data/repositories.dart';
 import 'package:jobwalk/data/settings.dart';
 import 'package:jobwalk/services/api.dart';
@@ -140,5 +142,21 @@ void main() {
         throwsA(isA<ApiError>()),
       );
     });
+  });
+
+  test('file writes to one key land in order', () async {
+    final dir = await Directory.systemTemp.createTemp('jobwalk_store');
+    addTearDown(() => dir.delete(recursive: true));
+    final store = FileBlobStore(dir);
+    // Sync and an edit saving the quote list at the same moment.
+    await Future.wait([
+      for (var i = 0; i < 20; i++) store.writeText('quotes.json', 'v$i'),
+      store.writeBytes('photo_a', Uint8List.fromList([1, 2, 3])),
+    ]);
+    expect(await store.readText('quotes.json'), 'v19');
+    expect(await store.readBytes('photo_a'), [1, 2, 3]);
+    await Future.wait([store.writeText('k', 'x'), store.delete('k')]);
+    expect(await store.readText('k'), isNull);
+    expect(dir.listSync().where((f) => f.path.endsWith('.tmp')), isEmpty);
   });
 }

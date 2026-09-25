@@ -146,6 +146,10 @@ class SyncController extends Notifier<SyncStatus> {
           pending: _data.pending,
           error: e.message,
         );
+      } on QuoteConflict {
+        // Another phone saved the same quote mid-sync: try again shortly.
+        state = state.copyWith(phase: SyncPhase.idle);
+        _schedule();
       }
     });
   }
@@ -309,7 +313,20 @@ class SyncController extends Notifier<SyncStatus> {
       final local = _quotes.byId(quote.id) ?? quote;
       if (_data.dirty.contains(local.id) ||
           !_data.versions.containsKey(local.id)) {
-        await _push(server, local);
+        try {
+          await _push(server, local);
+        } on QuoteConflict {
+          throw const ApiError(
+            'This quote was just changed on another phone. Check it and '
+            'send again.',
+          );
+        }
+      }
+      if (_quotes.byId(local.id) == null) {
+        throw const ApiError(
+          'This quote was deleted on another phone.',
+          retryable: false,
+        );
       }
       await _uploadPhotos(server);
       final synced = await server.publish(local.id);

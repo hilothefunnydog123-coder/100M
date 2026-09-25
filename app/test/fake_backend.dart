@@ -21,6 +21,9 @@ class FakeBackend {
   final bodies = <String, Object?>{};
   var offline = false;
   var signedOut = false;
+
+  /// Runs once, right after the next 409 conflict is answered.
+  void Function()? afterConflict;
   String? codeSentTo;
 
   Map<String, Object?> profile = const {'name': ''};
@@ -188,9 +191,13 @@ class FakeBackend {
           });
         }
         if (row.version != base) {
-          return _error(409, 'conflict', 'Changed elsewhere.', {
+          final response = _error(409, 'conflict', 'Changed elsewhere.', {
             'current': _present(row),
           });
+          final hook = afterConflict;
+          afterConflict = null;
+          hook?.call();
+          return response;
         }
         row
           ..data = _storable(incoming)

@@ -183,6 +183,29 @@ void main() {
     expect(phone.status.pending, 0);
   });
 
+  test('a quote saved elsewhere mid-sync is retried, not an error', () async {
+    final phone = Phone(backend);
+    await phone.quotes.add(sample('q_1'));
+    await phone.sync.sync();
+    backend.editElsewhere(
+      'q_1',
+      (q) => q.copyWith(updatedAt: testNow.add(const Duration(minutes: 1))),
+    );
+    // The retry after the first conflict meets a second one.
+    backend.afterConflict = () => backend.editElsewhere(
+      'q_1',
+      (q) => q.copyWith(updatedAt: testNow.add(const Duration(minutes: 2))),
+    );
+    phone.now = testNow.add(const Duration(minutes: 5));
+    await phone.quotes.save(phone.quote('q_1')!.copyWith(title: 'Mine'));
+    await phone.sync.sync();
+    expect(phone.status.phase, SyncPhase.idle);
+    expect(phone.status.pending, 1, reason: 'still to send');
+    await phone.sync.sync();
+    expect(backend.quote('q_1')!.title, 'Mine');
+    expect(phone.status.pending, 0);
+  });
+
   test('deletes travel both ways', () async {
     final phone = Phone(backend);
     await phone.quotes.add(sample('q_1'));
