@@ -196,6 +196,13 @@ void main() {
         ),
       );
       expect(groqBusy.status, 503);
+      final geminiBusy = await failWith(
+        DraftFailed(
+          'overloaded',
+          cause: GeminiApiException(503, 'UNAVAILABLE', 'Overloaded'),
+        ),
+      );
+      expect(geminiBusy.status, 503);
       expect((await failWith(const Overloaded())).status, 503);
       expect((await failWith(StateError('?'))).status, 502);
 

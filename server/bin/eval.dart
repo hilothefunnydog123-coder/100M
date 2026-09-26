@@ -9,7 +9,7 @@ import 'package:jobwalk_server/jobwalk_server.dart';
 /// Scores AI drafts against what contractors actually charged.
 ///
 ///   dart run bin/eval.dart --manifest ../eval/jobs.jsonl --out ../eval/out
-///   dart run bin/eval.dart --manifest ../eval/samples.jsonl --provider groq
+///   dart run bin/eval.dart --manifest ../eval/samples.jsonl --provider gemini
 ///
 /// See eval/README.md for the manifest format.
 Future<void> main(List<String> argv) async {
@@ -17,12 +17,16 @@ Future<void> main(List<String> argv) async {
     ..addOption('manifest', mandatory: true, help: 'JSONL of past jobs.')
     ..addOption('out', defaultsTo: 'eval-out', help: 'Output directory.')
     ..addOption('limit', help: 'Only the first N cases.')
-    ..addOption('provider', allowed: ['claude', 'groq'], defaultsTo: 'claude')
+    ..addOption(
+      'provider',
+      allowed: ['claude', 'groq', 'gemini'],
+      defaultsTo: 'claude',
+    )
     ..addOption(
       'model',
       help:
-          'Default: claude-opus-5-5, or ${GroqDrafterConfig.defaultModel} '
-          'on Groq.',
+          'Default: claude-opus-5-5, ${GroqDrafterConfig.defaultModel} on '
+          'Groq, ${GeminiDrafterConfig.defaultModel} on Gemini.',
     )
     ..addOption('effort', help: 'Default: high, or medium on Groq.')
     ..addOption('max-tokens', help: 'Output budget: reasoning plus answer.')
@@ -31,7 +35,10 @@ Future<void> main(List<String> argv) async {
       negatable: false,
       help: "Fit Groq's free tier: one photo per job, light reasoning.",
     )
-    ..addOption('concurrency', help: 'Drafts at a time. Default: 4, 1 on Groq.')
+    ..addOption(
+      'concurrency',
+      help: 'Drafts at a time. Default: 4, or 1 on Groq and Gemini.',
+    )
     ..addOption('max-cost', help: 'Stop starting new cases above this USD.')
     ..addFlag('fake', help: 'Use sample drafts instead of a model.')
     ..addFlag('help', abbr: 'h', negatable: false);
@@ -53,8 +60,10 @@ Future<void> main(List<String> argv) async {
   final limit = int.tryParse(args.option('limit') ?? '');
   if (limit != null) cases = cases.take(limit).toList();
   final groq = args.option('provider') == 'groq';
+  final gemini = args.option('provider') == 'gemini';
   final concurrency =
-      int.tryParse(args.option('concurrency') ?? '') ?? (groq ? 1 : 4);
+      int.tryParse(args.option('concurrency') ?? '') ??
+      (groq || gemini ? 1 : 4);
   final maxCost = double.tryParse(args.option('max-cost') ?? '');
   final maxTokens = int.tryParse(args.option('max-tokens') ?? '');
 
@@ -98,6 +107,32 @@ Future<void> main(List<String> argv) async {
     final base = env('GROQ_BASE_URL');
     drafter = GroqDrafter(
       api: GroqClient(
+        apiKey: key,
+        baseUrl: base == null ? null : Uri.parse(base),
+        // Wait out per-minute rate limits instead of failing cases.
+        maxRetries: 6,
+      ),
+      config: config,
+    );
+    model = config.model;
+    effort = config.effort;
+  } else if (gemini) {
+    final key = env('GEMINI_API_KEY') ?? env('GOOGLE_API_KEY');
+    if (key == null) return fail('Set GEMINI_API_KEY, or pass --fake.');
+    final config = const GeminiDrafterConfig().copyWith(
+      model: args.option('model'),
+      effort: args.option('effort'),
+      maxTokens: maxTokens,
+    );
+    if (!GeminiDrafterConfig.efforts.contains(config.effort)) {
+      return fail(
+        '--effort must be one of ${GeminiDrafterConfig.efforts.join(', ')} '
+        'on Gemini.',
+      );
+    }
+    final base = env('GEMINI_BASE_URL');
+    drafter = GeminiDrafter(
+      api: GeminiClient(
         apiKey: key,
         baseUrl: base == null ? null : Uri.parse(base),
         // Wait out per-minute rate limits instead of failing cases.

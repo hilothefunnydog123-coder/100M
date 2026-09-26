@@ -216,10 +216,7 @@ void main() {
       final d = await GroqDrafter(api: api).draft(draftRequest());
       expect(d.draft.isUsable, isTrue);
       expect(d.stats.malformed, 1);
-      expect(
-        () => GroqDrafter.parseDraft('[1, 2]'),
-        throwsA(isA<FormatException>()),
-      );
+      expect(() => parseDraftAnswer('[1, 2]'), throwsA(isA<FormatException>()));
     });
 
     test('retries once when output is truncated, then gives up', () async {

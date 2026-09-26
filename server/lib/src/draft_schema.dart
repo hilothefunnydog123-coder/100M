@@ -104,3 +104,21 @@ String schemaShape(Map<String, Object?> schema) {
       return '$type';
   }
 }
+
+/// Parses a model's JSON answer into a draft. JSON mode (Groq) guarantees
+/// JSON but not our schema, so an answer missing any top-level field is
+/// malformed rather than an empty draft. Structured outputs always pass.
+AiDraft parseDraftAnswer(String text) {
+  final decoded = jsonDecode(text);
+  if (decoded is! Map<String, Object?>) {
+    throw const FormatException('Output is not a JSON object.');
+  }
+  final missing = [
+    for (final key in draftSchema['required']! as List<Object?>)
+      if (!decoded.containsKey(key)) '$key',
+  ];
+  if (missing.isNotEmpty) {
+    throw FormatException('Output is missing ${missing.join(', ')}.');
+  }
+  return AiDraft.fromJson(decoded);
+}

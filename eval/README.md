@@ -35,12 +35,21 @@ has spent that many dollars.
 
 ## Compare providers
 
-`--provider groq` drafts with Qwen 3.8 27B on Groq (`GROQ_API_KEY`) using the
+`--provider gemini` drafts with Gemini 3.8 Flash (`GEMINI_API_KEY`) and
+`--provider groq` with Qwen 3.8 27B on Groq (`GROQ_API_KEY`), both with the
 same instructions. Run the same manifest once per provider and compare:
 
 ```sh
+GEMINI_API_KEY=... dart run bin/eval.dart --manifest ../eval/jobs.jsonl --provider gemini --out ../eval/out-gemini
 GROQ_API_KEY=... dart run bin/eval.dart --manifest ../eval/jobs.jsonl --provider groq --out ../eval/out-groq
 ```
+
+Gemini's free tier allows about 20 requests a day for its Flash models; when
+that runs out, the remaining cases fail with a message saying so, and the
+quota resets at midnight Pacific time. `--model gemini-3.5-flash-lite` has a
+larger free allowance and a weaker model. On the free tier Google may use
+what you send to improve its products, so keep customers' photos for a key
+with billing turned on.
 
 On Groq's free tier add `--free-tier`: its 8,000-token limit per request
 leaves room for one photo and a short answer, so drafts see less of each job
@@ -54,5 +63,5 @@ returns complete, sensible drafts. Only real jobs with what was actually
 charged can say which provider prices jobs better.
 
 ```sh
-GROQ_API_KEY=... dart run bin/eval.dart --manifest ../eval/samples.jsonl --provider groq --free-tier --out ../eval/out-samples
+GEMINI_API_KEY=... dart run bin/eval.dart --manifest ../eval/samples.jsonl --provider gemini --out ../eval/out-samples
 ```

@@ -12,6 +12,8 @@ export 'src/db/pg_limiter.dart';
 export 'src/draft_schema.dart';
 export 'src/drafter.dart';
 export 'src/eval.dart';
+export 'src/gemini_client.dart';
+export 'src/gemini_drafter.dart';
 export 'src/groq_client.dart';
 export 'src/groq_drafter.dart';
 export 'src/integrations/email.dart';

@@ -42,9 +42,10 @@ configuration and prints every problem at once (exit code 78).
 | `DATABASE_POOL_SIZE` | `10` | Per instance. |
 | `JOBWALK_PUBLIC_URL` | `http://localhost:PORT` | Origin of quote links and email links. HTTPS in production. |
 | `JOBWALK_SECRET` | dev value | 32+ random characters. Keys sign-in code hashes and onboarding links. |
-| `JOBWALK_AI_PROVIDER` | `claude` | `groq` drafts with an open-weights model on Groq instead (see below). |
+| `JOBWALK_AI_PROVIDER` | `claude` | `gemini` or `groq` draft with another provider (see below). |
 | `ANTHROPIC_API_KEY` | | Or `JOBWALK_FAKE_MODEL=true` for sample drafts (not in production). |
-| `JOBWALK_MODEL`, `JOBWALK_EFFORT`, `JOBWALK_MAX_TOKENS`, `JOBWALK_FALLBACKS` | Opus 5.5, `high`, 32000, on | With Groq: `qwen/qwen3.8-27b`, `medium` (`low`, `medium`, or `high`), 16000; no fallbacks. |
+| `JOBWALK_MODEL`, `JOBWALK_EFFORT`, `JOBWALK_MAX_TOKENS`, `JOBWALK_FALLBACKS` | Opus 5.5, `high`, 32000, on | With Gemini: `gemini-3.8-flash`, `high` (`low`, `medium`, or `high`), 32000. With Groq: `qwen/qwen3.8-27b`, `medium` (same choices), 16000. Fallbacks are Claude's. |
+| `GEMINI_API_KEY`, `GEMINI_BASE_URL` | | Required with `JOBWALK_AI_PROVIDER=gemini`. `GOOGLE_API_KEY` works too. |
 | `GROQ_API_KEY`, `GROQ_BASE_URL` | | Required with `JOBWALK_AI_PROVIDER=groq`. |
 | `JOBWALK_GROQ_FREE_TIER` | off | One photo per draft and a shorter answer, to fit Groq's free tier. |
 | `JOBWALK_MAX_CONCURRENT`, `JOBWALK_MAX_QUEUED` | 16, 64 | Drafts in flight per instance and the queue behind them; beyond that, 503 with Retry-After. |
@@ -71,13 +72,21 @@ configuration and prints every problem at once (exit code 78).
 
 ### AI provider
 
-Claude is the default. `JOBWALK_AI_PROVIDER=groq` drafts with Qwen 3.8 27B on
-Groq instead: the same instructions and the same checks on every answer, at a
-fraction of the cost. Run `bin/eval.dart` on real jobs with both providers
-before switching (see [eval/README.md](../eval/README.md)); the pricing
-guidance was written and checked against Claude.
+Claude is the default. Two other providers get the same instructions and the
+same checks on every answer, at a fraction of the cost. Run `bin/eval.dart` on
+real jobs with each provider before switching (see
+[eval/README.md](../eval/README.md)); the pricing guidance was written and
+checked against Claude.
 
-Groq's limits shape what gets sent:
+`JOBWALK_AI_PROVIDER=gemini` drafts with Gemini 3.8 Flash. Gemini enforces the
+same answer schema Claude does and takes every photo. Its free tier allows
+about 20 requests a day per Google Cloud project (Flash-Lite models allow
+more), and on the free tier Google may use what you send to improve its
+products, with people reviewing some of it. Use a key from a project with
+billing turned on before customers' photos go through it.
+
+`JOBWALK_AI_PROVIDER=groq` drafts with Qwen 3.8 27B on Groq. Groq's limits
+shape what gets sent:
 
 - At most 3 photos per request, each counted as 2,048 tokens. Later photos
   are left out, and the model is told so.

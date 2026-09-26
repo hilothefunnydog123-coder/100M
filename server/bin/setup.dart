@@ -39,13 +39,21 @@ class Setup {
     final QuoteDrafter drafter;
     if (config.fakeModel) {
       drafter = DemoDrafter();
-    } else if (config.usesGroq) {
+    } else if (config.aiProvider == 'groq') {
       drafter = GroqDrafter(
         api: GroqClient(
           apiKey: config.groqApiKey!,
           baseUrl: config.groqBaseUrl,
         ),
         config: config.groqDrafter,
+      );
+    } else if (config.aiProvider == 'gemini') {
+      drafter = GeminiDrafter(
+        api: GeminiClient(
+          apiKey: config.geminiApiKey!,
+          baseUrl: config.geminiBaseUrl,
+        ),
+        config: config.geminiDrafter,
       );
     } else {
       drafter = Drafter(

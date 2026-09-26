@@ -106,6 +106,56 @@ ChatCompletion chatReply({
   },
 });
 
+/// Records Gemini requests and replies with queued responses (or errors).
+class FakeGeminiApi implements GenerateContentApi {
+  FakeGeminiApi(this.responses);
+
+  /// Each entry is a [GeminiResponse] to return or an exception to throw.
+  final List<Object> responses;
+  final requests = <(String, Map<String, Object?>)>[];
+
+  @override
+  Future<GeminiResponse> generateContent(
+    String model,
+    Map<String, Object?> body,
+  ) async {
+    requests.add((model, body));
+    if (responses.isEmpty) throw StateError('No fake response queued.');
+    final next = responses.removeAt(0);
+    if (next is GeminiResponse) return next;
+    throw next;
+  }
+}
+
+GeminiResponse geminiReply({
+  Object? draft,
+  String? text,
+  String finishReason = 'STOP',
+  int cachedTokens = 0,
+}) => GeminiResponse({
+  'candidates': [
+    {
+      'content': {
+        'role': 'model',
+        'parts': [
+          if (text != null || draft != null)
+            {'text': text ?? jsonEncode(draft), 'thoughtSignature': 'sig'},
+        ],
+      },
+      'finishReason': finishReason,
+    },
+  ],
+  'usageMetadata': {
+    'promptTokenCount': 8000,
+    'candidatesTokenCount': 1500,
+    'thoughtsTokenCount': 2500,
+    'cachedContentTokenCount': cachedTokens,
+    'totalTokenCount': 12000,
+  },
+  'modelVersion': 'gemini-3.8-flash',
+  'responseId': 'resp_test',
+});
+
 /// A realistic model response: the fence sample in wire format.
 Map<String, Object?> draftJson() => SampleJob.fence.draft.toJson();
 

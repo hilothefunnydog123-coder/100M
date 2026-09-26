@@ -1,4 +1,5 @@
 import 'drafter.dart';
+import 'gemini_drafter.dart';
 import 'groq_drafter.dart';
 
 /// Thrown at startup with every configuration problem found, not just the
@@ -38,6 +39,9 @@ class ServerConfig {
     this.groqApiKey,
     this.groqBaseUrl,
     this.groqDrafter = const GroqDrafterConfig(),
+    this.geminiApiKey,
+    this.geminiBaseUrl,
+    this.geminiDrafter = const GeminiDrafterConfig(),
     this.fakeModel = false,
     this.maxConcurrentDrafts = 16,
     this.maxQueuedDrafts = 64,
@@ -96,7 +100,8 @@ class ServerConfig {
   /// Load balancers between the internet and this server (for client IPs).
   final int trustedProxies;
 
-  /// `claude` (default) or `groq`, which drafts with an open-weights model.
+  /// `claude` (default), `groq` (an open-weights model on Groq), or
+  /// `gemini`.
   final String aiProvider;
 
   final String? anthropicApiKey;
@@ -109,23 +114,32 @@ class ServerConfig {
   /// Honors `GROQ_BASE_URL`, like Groq's SDKs.
   final Uri? groqBaseUrl;
 
+  /// `GEMINI_API_KEY`, or `GOOGLE_API_KEY` like Google's SDKs.
+  final String? geminiApiKey;
+  final Uri? geminiBaseUrl;
+
   /// Canned sample drafts instead of a model (development only).
   final bool fakeModel;
 
-  /// Settings for the provider in use; the other keeps its defaults.
+  /// Settings for the provider in use; the others keep their defaults.
   final DrafterConfig drafter;
   final GroqDrafterConfig groqDrafter;
-
-  bool get usesGroq => aiProvider == 'groq';
+  final GeminiDrafterConfig geminiDrafter;
 
   /// The model drafts use, for logs and the health endpoint.
   String get draftModel => fakeModel
       ? 'demo'
-      : usesGroq
-      ? groqDrafter.model
-      : drafter.model;
+      : switch (aiProvider) {
+          'groq' => groqDrafter.model,
+          'gemini' => geminiDrafter.model,
+          _ => drafter.model,
+        };
 
-  String get draftEffort => usesGroq ? groqDrafter.effort : drafter.effort;
+  String get draftEffort => switch (aiProvider) {
+    'groq' => groqDrafter.effort,
+    'gemini' => geminiDrafter.effort,
+    _ => drafter.effort,
+  };
 
   final int maxConcurrentDrafts;
   final int maxQueuedDrafts;
@@ -247,17 +261,23 @@ class ServerConfig {
     }
 
     final provider = str('JOBWALK_AI_PROVIDER') ?? 'claude';
-    if (!const {'claude', 'groq'}.contains(provider)) {
-      problems.add('JOBWALK_AI_PROVIDER must be claude or groq.');
+    if (!const {'claude', 'groq', 'gemini'}.contains(provider)) {
+      problems.add('JOBWALK_AI_PROVIDER must be claude, groq, or gemini.');
     }
     final groq = provider == 'groq';
+    final gemini = provider == 'gemini';
     final fake = boolVar('JOBWALK_FAKE_MODEL', false);
     final apiKey = str('ANTHROPIC_API_KEY');
     final groqKey = str('GROQ_API_KEY');
-    final keyName = groq ? 'GROQ_API_KEY' : 'ANTHROPIC_API_KEY';
+    final geminiKey = str('GEMINI_API_KEY') ?? str('GOOGLE_API_KEY');
+    final (keyName, key) = switch (provider) {
+      'groq' => ('GROQ_API_KEY', groqKey),
+      'gemini' => ('GEMINI_API_KEY', geminiKey),
+      _ => ('ANTHROPIC_API_KEY', apiKey),
+    };
     if (fake && production) {
       problems.add('JOBWALK_FAKE_MODEL is for development only.');
-    } else if (!fake && (groq ? groqKey : apiKey) == null) {
+    } else if (!fake && key == null) {
       problems.add(
         '$keyName is not set. Set it, or set JOBWALK_FAKE_MODEL=true for '
         'canned sample drafts.',
@@ -273,12 +293,26 @@ class ServerConfig {
         'tier allows roughly 25 to 30 drafts a day across all users.',
       );
     }
-    final efforts = groq ? GroqDrafterConfig.efforts : DrafterConfig.efforts;
-    final effort = str('JOBWALK_EFFORT') ?? (groq ? groqPreset.effort : 'high');
+    final efforts = switch (provider) {
+      'groq' => GroqDrafterConfig.efforts,
+      'gemini' => GeminiDrafterConfig.efforts,
+      _ => DrafterConfig.efforts,
+    };
+    final effort =
+        str('JOBWALK_EFFORT') ??
+        switch (provider) {
+          'groq' => groqPreset.effort,
+          'gemini' => const GeminiDrafterConfig().effort,
+          _ => 'high',
+        };
     if (!efforts.contains(effort)) {
+      final using = switch (provider) {
+        'groq' => ' with Groq',
+        'gemini' => ' with Gemini',
+        _ => '',
+      };
       problems.add(
-        'JOBWALK_EFFORT must be one of ${efforts.join(', ')}'
-        '${groq ? ' with Groq' : ''}.',
+        'JOBWALK_EFFORT must be one of ${efforts.join(', ')}$using.',
       );
     }
 
@@ -383,7 +417,7 @@ class ServerConfig {
       groqApiKey: groqKey,
       groqBaseUrl: urlVar('GROQ_BASE_URL'),
       fakeModel: fake,
-      drafter: groq
+      drafter: groq || gemini
           ? const DrafterConfig()
           : DrafterConfig(
               model: str('JOBWALK_MODEL') ?? 'claude-opus-5-5',
@@ -402,6 +436,15 @@ class ServerConfig {
               ),
             )
           : const GroqDrafterConfig(),
+      geminiApiKey: geminiKey,
+      geminiBaseUrl: urlVar('GEMINI_BASE_URL'),
+      geminiDrafter: gemini
+          ? GeminiDrafterConfig(
+              model: str('JOBWALK_MODEL') ?? GeminiDrafterConfig.defaultModel,
+              effort: effort,
+              maxTokens: intVar('JOBWALK_MAX_TOKENS', 32000, min: 1000),
+            )
+          : const GeminiDrafterConfig(),
       maxConcurrentDrafts: intVar('JOBWALK_MAX_CONCURRENT', 16, min: 1),
       maxQueuedDrafts: intVar('JOBWALK_MAX_QUEUED', 64),
       draftTimeout: Duration(

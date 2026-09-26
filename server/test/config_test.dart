@@ -50,14 +50,14 @@ void main() {
     );
     expect(
       problems({'JOBWALK_AI_PROVIDER': 'openai', 'ANTHROPIC_API_KEY': 'k'}),
-      contains('JOBWALK_AI_PROVIDER must be claude or groq.'),
+      contains('JOBWALK_AI_PROVIDER must be claude, groq, or gemini.'),
     );
     final c = ServerConfig.fromEnvironment({
       'JOBWALK_AI_PROVIDER': 'groq',
       'GROQ_API_KEY': 'gsk-test',
       'GROQ_BASE_URL': 'https://proxy.example/groq',
     });
-    expect(c.usesGroq, isTrue);
+    expect(c.aiProvider, 'groq');
     expect(c.anthropicApiKey, isNull);
     expect(c.groqBaseUrl.toString(), 'https://proxy.example/groq');
     expect(c.groqDrafter.model, 'qwen/qwen3.8-27b');
@@ -106,6 +106,45 @@ void main() {
       'JOBWALK_GROQ_FREE_TIER': 'true',
     });
     expect(free.warnings.join('\n'), contains('JOBWALK_GROQ_FREE_TIER'));
+  });
+
+  test('Gemini takes GEMINI_API_KEY, or GOOGLE_API_KEY like its SDKs', () {
+    expect(
+      problems({'JOBWALK_AI_PROVIDER': 'gemini'}).join('\n'),
+      contains('GEMINI_API_KEY is not set'),
+    );
+    final c = ServerConfig.fromEnvironment({
+      'JOBWALK_AI_PROVIDER': 'gemini',
+      'GOOGLE_API_KEY': 'AIza-test',
+    });
+    expect(c.geminiApiKey, 'AIza-test');
+    expect(c.geminiDrafter.model, 'gemini-3.8-flash');
+    expect(c.geminiDrafter.effort, 'high');
+    expect(c.geminiDrafter.maxTokens, 32000);
+    expect(c.draftModel, 'gemini-3.8-flash');
+    expect(c.draftEffort, 'high');
+    expect(c.drafter.model, 'claude-opus-5-5');
+
+    final custom = ServerConfig.fromEnvironment({
+      'JOBWALK_AI_PROVIDER': 'gemini',
+      'GEMINI_API_KEY': 'AIza-primary',
+      'GOOGLE_API_KEY': 'AIza-other',
+      'GEMINI_BASE_URL': 'https://proxy.example/gemini',
+      'JOBWALK_MODEL': 'gemini-3.5-flash-lite',
+      'JOBWALK_EFFORT': 'low',
+    });
+    expect(custom.geminiApiKey, 'AIza-primary');
+    expect(custom.geminiBaseUrl.toString(), 'https://proxy.example/gemini');
+    expect(custom.geminiDrafter.model, 'gemini-3.5-flash-lite');
+    expect(custom.geminiDrafter.effort, 'low');
+    expect(
+      problems({
+        'JOBWALK_AI_PROVIDER': 'gemini',
+        'GEMINI_API_KEY': 'k',
+        'JOBWALK_EFFORT': 'max',
+      }).join('\n'),
+      contains('with Gemini'),
+    );
   });
 
   test('ignores generic variables set by other tools', () {

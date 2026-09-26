@@ -75,10 +75,6 @@ $systemPrompt
 Reply with one JSON object and nothing else. Use exactly these fields, in this order, and fill in every one: "", [], or 0 when a field doesn't apply. Quantities, hours, and costs are plain numbers with no units or dollar signs.
 ${schemaShape(draftSchema)}''';
 
-final _requiredFields = [
-  for (final key in draftSchema['required']! as List<Object?>) '$key',
-];
-
 /// Drafts quotes with an open-weights vision model on Groq, through its
 /// OpenAI-compatible API. Same prompt and parser as [Drafter], so the two
 /// can be compared case for case with `bin/eval.dart`.
@@ -225,7 +221,7 @@ class GroqDrafter implements QuoteDrafter {
       }
       try {
         return Draft(
-          parseDraft(completion.content),
+          parseDraftAnswer(completion.content),
           stats,
           model: stats.models.join(','),
         );
@@ -235,22 +231,5 @@ class GroqDrafter implements QuoteDrafter {
       }
     }
     throw DraftFailed('No valid draft was produced.', cause: lastError);
-  }
-
-  /// JSON mode guarantees JSON, not our schema, so an answer missing any
-  /// top-level field counts as malformed instead of an empty draft.
-  static AiDraft parseDraft(String content) {
-    final decoded = jsonDecode(content);
-    if (decoded is! Map<String, Object?>) {
-      throw const FormatException('Output is not a JSON object.');
-    }
-    final missing = [
-      for (final key in _requiredFields)
-        if (!decoded.containsKey(key)) key,
-    ];
-    if (missing.isNotEmpty) {
-      throw FormatException('Output is missing ${missing.join(', ')}.');
-    }
-    return AiDraft.fromJson(decoded);
   }
 }

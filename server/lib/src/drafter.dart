@@ -124,8 +124,10 @@ const _pricesPerMTok = <String, (double, double, double, double)>{
   'claude-fable-5-1': (10, 50, 0.25, 12.5),
   'claude-sonnet-5': (2, 10, 0.20, 2.5),
   'claude-haiku-4-5': (1, 5, 0.10, 1.25),
-  // Groq's on-demand price; cached input is counted at the full input price.
+  // Groq's on-demand price and Gemini's introductory price through 2026;
+  // cached input is counted at the full input price.
   'qwen/qwen3.8-27b': (0.80, 4, 0.80, 0),
+  'gemini-3.8-flash': (0.75, 3.75, 0.75, 0),
 };
 
 class Draft {
