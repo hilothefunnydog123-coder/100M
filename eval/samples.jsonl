@@ -1,0 +1,7 @@
+// The app's three sample jobs. The photos are rendered scenes, not real
+// jobs, and there are no actual prices, so this checks that a provider
+// returns complete, sensible drafts; it can't score accuracy. Compare the
+// drafts in <out>/drafts/ across providers.
+{"id": "fence", "trade": "fencing", "zip": "78704", "note": "Replace the whole back run on the same line, 6 ft privacy with a walk gate. Customer is deciding between pine and cedar.", "photos": ["../app/assets/samples/fence_1.jpg", "../app/assets/samples/fence_2.jpg", "../app/assets/samples/fence_3.jpg"]}
+{"id": "living-room", "trade": "painting", "zip": "78704", "note": "Walls for sure. Customer is thinking about trim, the door, and the ceiling too.", "photos": ["../app/assets/samples/living_room_1.jpg", "../app/assets/samples/living_room_2.jpg", "../app/assets/samples/living_room_3.jpg"]}
+{"id": "driveway", "trade": "pressure_washing", "zip": "78704", "note": "Driveway and front walk. Ask if they want it sealed after.", "photos": ["../app/assets/samples/driveway_1.jpg", "../app/assets/samples/driveway_2.jpg"]}

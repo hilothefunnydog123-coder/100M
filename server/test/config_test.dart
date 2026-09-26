@@ -43,6 +43,71 @@ void main() {
     expect(c.anthropicBaseUrl, isNull);
   });
 
+  test('Groq is opt-in and needs its own key', () {
+    expect(
+      problems({'JOBWALK_AI_PROVIDER': 'groq'}).join('\n'),
+      contains('GROQ_API_KEY is not set'),
+    );
+    expect(
+      problems({'JOBWALK_AI_PROVIDER': 'openai', 'ANTHROPIC_API_KEY': 'k'}),
+      contains('JOBWALK_AI_PROVIDER must be claude or groq.'),
+    );
+    final c = ServerConfig.fromEnvironment({
+      'JOBWALK_AI_PROVIDER': 'groq',
+      'GROQ_API_KEY': 'gsk-test',
+      'GROQ_BASE_URL': 'https://proxy.example/groq',
+    });
+    expect(c.usesGroq, isTrue);
+    expect(c.anthropicApiKey, isNull);
+    expect(c.groqBaseUrl.toString(), 'https://proxy.example/groq');
+    expect(c.groqDrafter.model, 'qwen/qwen3.8-27b');
+    expect(c.groqDrafter.effort, 'medium');
+    expect(c.groqDrafter.maxTokens, 16000);
+    expect(c.groqDrafter.requestTokenLimit, isNull);
+    expect(c.draftModel, 'qwen/qwen3.8-27b');
+    expect(c.draftEffort, 'medium');
+    // Claude's settings stay at their defaults, unused.
+    expect(c.drafter.model, 'claude-opus-5-5');
+  });
+
+  test('the shared model settings apply to Groq, with its own efforts', () {
+    final c = ServerConfig.fromEnvironment({
+      'JOBWALK_AI_PROVIDER': 'groq',
+      'GROQ_API_KEY': 'gsk-test',
+      'JOBWALK_GROQ_FREE_TIER': 'true',
+      'JOBWALK_MAX_TOKENS': '3500',
+    });
+    expect(c.groqDrafter.effort, 'low');
+    expect(c.groqDrafter.maxPhotos, 1);
+    expect(c.groqDrafter.maxTokens, 3500);
+    expect(c.groqDrafter.requestTokenLimit, 8000);
+    expect(
+      problems({
+        'JOBWALK_AI_PROVIDER': 'groq',
+        'GROQ_API_KEY': 'gsk-test',
+        'JOBWALK_EFFORT': 'max',
+      }).join('\n'),
+      contains('with Groq'),
+    );
+    final paid = ServerConfig.fromEnvironment({
+      ...production,
+      'JOBWALK_AI_PROVIDER': 'groq',
+      'GROQ_API_KEY': 'gsk-test',
+      'JOBWALK_MODEL': 'qwen/qwen3.9-32b',
+      'JOBWALK_EFFORT': 'high',
+    });
+    expect(paid.groqDrafter.model, 'qwen/qwen3.9-32b');
+    expect(paid.groqDrafter.effort, 'high');
+    expect(paid.warnings.join('\n'), isNot(contains('FREE_TIER')));
+    final free = ServerConfig.fromEnvironment({
+      ...production,
+      'JOBWALK_AI_PROVIDER': 'groq',
+      'GROQ_API_KEY': 'gsk-test',
+      'JOBWALK_GROQ_FREE_TIER': 'true',
+    });
+    expect(free.warnings.join('\n'), contains('JOBWALK_GROQ_FREE_TIER'));
+  });
+
   test('ignores generic variables set by other tools', () {
     final c = ServerConfig.fromEnvironment({
       'ANTHROPIC_API_KEY': 'k',

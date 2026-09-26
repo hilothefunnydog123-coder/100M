@@ -7,63 +7,58 @@ import 'package:http/http.dart' as http;
 
 import 'model_api.dart';
 
-/// The subset of the Claude Messages API the drafter needs. Implemented by
-/// [ClaudeClient] and by fakes in tests and local development.
-abstract interface class MessagesApi {
-  Future<ClaudeMessage> createMessage(
-    Map<String, Object?> body, {
-    List<String> betas,
-  });
+/// The subset of an OpenAI-compatible chat completions API the Groq drafter
+/// needs. Implemented by [GroqClient] and by fakes in tests.
+abstract interface class ChatCompletionsApi {
+  Future<ChatCompletion> createChatCompletion(Map<String, Object?> body);
 }
 
-/// A parsed Messages API response.
-class ClaudeMessage {
-  ClaudeMessage(this.json);
+/// A parsed chat completion.
+class ChatCompletion {
+  ChatCompletion(this.json);
 
   final Map<String, Object?> json;
 
   String get id => json['id'] as String? ?? '';
 
-  /// The model that produced the message. With server-side fallbacks this
-  /// can differ from the model that was requested.
   String get model => json['model'] as String? ?? '';
 
-  String get stopReason => json['stop_reason'] as String? ?? '';
+  Map<String, Object?> get _choice => switch (json['choices']) {
+    [final Map<String, Object?> first, ...] => first,
+    _ => const {},
+  };
 
-  bool get refused => stopReason == 'refusal';
+  /// `stop`, `length` (hit `max_completion_tokens`), `content_filter`...
+  String get finishReason => _choice['finish_reason'] as String? ?? '';
 
-  /// Only set on refusals; informational.
-  Map<String, Object?>? get stopDetails =>
-      json['stop_details'] as Map<String, Object?>?;
-
-  List<Map<String, Object?>> get content => [
-    for (final block in (json['content'] as List? ?? const []))
-      if (block is Map<String, Object?>) block,
-  ];
-
-  /// Concatenated `text` blocks. Thinking and fallback blocks are skipped:
-  /// responses are read by block type, never by position.
-  String get text => [
-    for (final block in content)
-      if (block['type'] == 'text') block['text'] as String? ?? '',
-  ].join();
+  /// The answer. Reasoning, when it is returned at all, is a separate field.
+  String get content => switch (_choice['message']) {
+    {'content': final String text} => text,
+    _ => '',
+  };
 
   Map<String, Object?> get usage =>
       json['usage'] as Map<String, Object?>? ?? const {};
 
-  int _usage(String key) => (usage[key] as num?)?.toInt() ?? 0;
+  /// All input tokens, [cachedTokens] included.
+  int get promptTokens => (usage['prompt_tokens'] as num?)?.toInt() ?? 0;
 
-  int get inputTokens => _usage('input_tokens');
-  int get outputTokens => _usage('output_tokens');
-  int get cacheReadTokens => _usage('cache_read_input_tokens');
-  int get cacheWriteTokens => _usage('cache_creation_input_tokens');
+  /// Reasoning plus the answer.
+  int get completionTokens =>
+      (usage['completion_tokens'] as num?)?.toInt() ?? 0;
+
+  int get cachedTokens => switch (usage['prompt_tokens_details']) {
+    {'cached_tokens': final num n} => n.toInt(),
+    _ => 0,
+  };
 }
 
-class ClaudeApiException implements ModelApiException {
-  ClaudeApiException(
+class GroqApiException implements ModelApiException {
+  GroqApiException(
     this.statusCode,
     this.type,
     this.message, {
+    this.code = '',
     this.requestId,
   });
 
@@ -71,31 +66,41 @@ class ClaudeApiException implements ModelApiException {
   final int statusCode;
   @override
   final String type;
+
+  /// Groq's error code, such as `rate_limit_exceeded` or
+  /// `json_validate_failed`.
+  final String code;
   final String message;
   @override
   final String? requestId;
 
-  /// Overloaded, rate limited, or a transient server error.
+  /// Rate limited, over capacity (498), or a transient server error.
   @override
   bool get isTransient =>
       statusCode == 408 ||
-      statusCode == 409 ||
       statusCode == 429 ||
+      statusCode == 498 ||
       statusCode >= 500;
+
+  /// JSON mode rejected the model's output as invalid JSON. The same
+  /// request can work on a second try.
+  bool get invalidJson => code == 'json_validate_failed';
+
+  /// The prompt plus `max_completion_tokens` is more than the account's
+  /// per-minute token limit. Retrying can't help; the request has to shrink.
+  bool get tooLarge => statusCode == 413;
 
   @override
   String toString() =>
-      'ClaudeApiException($statusCode $type: $message'
+      'GroqApiException($statusCode ${code.isEmpty ? type : code}: $message'
       '${requestId == null ? '' : ', request $requestId'})';
 }
 
-/// A minimal raw-HTTP client for `POST /v1/messages`.
-///
-/// Dart has no official Anthropic SDK, so this follows the documented REST
-/// contract: `x-api-key` and `anthropic-version` headers, betas in
-/// `anthropic-beta`, retries on 408/409/429/5xx with `retry-after` honored.
-class ClaudeClient implements MessagesApi {
-  ClaudeClient({
+/// A minimal raw-HTTP client for Groq's OpenAI-compatible
+/// `POST /openai/v1/chat/completions`: a bearer key, and retries on
+/// 408/429/498/5xx with `retry-after` honored, like [ClaudeClient].
+class GroqClient implements ChatCompletionsApi {
+  GroqClient({
     required this.apiKey,
     http.Client? httpClient,
     Uri? baseUrl,
@@ -103,10 +108,8 @@ class ClaudeClient implements MessagesApi {
     this.timeout = const Duration(seconds: 150),
     Future<void> Function(Duration)? sleep,
   }) : _http = httpClient ?? http.Client(),
-       _baseUrl = baseUrl ?? Uri.parse('https://api.anthropic.com'),
+       _baseUrl = baseUrl ?? Uri.parse('https://api.groq.com'),
        _sleep = sleep ?? Future<void>.delayed;
-
-  static const apiVersion = '2023-06-01';
 
   final String apiKey;
   final int maxRetries;
@@ -117,18 +120,13 @@ class ClaudeClient implements MessagesApi {
   final _random = Random();
 
   @override
-  Future<ClaudeMessage> createMessage(
-    Map<String, Object?> body, {
-    List<String> betas = const [],
-  }) async {
-    // Append to any path prefix (e.g. a proxy mounted at /anthropic).
+  Future<ChatCompletion> createChatCompletion(Map<String, Object?> body) async {
+    // Append to any path prefix (e.g. a proxy mounted at /groq).
     final prefix = _baseUrl.path.replaceAll(RegExp(r'/+$'), '');
-    final uri = _baseUrl.replace(path: '$prefix/v1/messages');
+    final uri = _baseUrl.replace(path: '$prefix/openai/v1/chat/completions');
     final headers = {
       'content-type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': apiVersion,
-      if (betas.isNotEmpty) 'anthropic-beta': betas.join(','),
+      'authorization': 'Bearer $apiKey',
     };
     final encoded = jsonEncode(body);
 
@@ -140,19 +138,19 @@ class ClaudeClient implements MessagesApi {
             .timeout(timeout);
       } on TimeoutException {
         if (attempt >= maxRetries) {
-          throw ClaudeApiException(408, 'timeout', 'Request timed out.');
+          throw GroqApiException(408, 'timeout', 'Request timed out.');
         }
         await _sleep(_backoff(attempt, null));
         continue;
       } on SocketException catch (e) {
         if (attempt >= maxRetries) {
-          throw ClaudeApiException(503, 'connection_error', e.message);
+          throw GroqApiException(503, 'connection_error', e.message);
         }
         await _sleep(_backoff(attempt, null));
         continue;
       } on http.ClientException catch (e) {
         if (attempt >= maxRetries) {
-          throw ClaudeApiException(503, 'connection_error', e.message);
+          throw GroqApiException(503, 'connection_error', e.message);
         }
         await _sleep(_backoff(attempt, null));
         continue;
@@ -161,9 +159,9 @@ class ClaudeClient implements MessagesApi {
       if (response.statusCode == 200) {
         final decoded = jsonDecode(utf8.decode(response.bodyBytes));
         if (decoded is! Map<String, Object?>) {
-          throw ClaudeApiException(502, 'bad_response', 'Unexpected body.');
+          throw GroqApiException(502, 'bad_response', 'Unexpected body.');
         }
-        return ClaudeMessage(decoded);
+        return ChatCompletion(decoded);
       }
 
       final error = _parseError(response);
@@ -184,24 +182,26 @@ class ClaudeClient implements MessagesApi {
     return Duration(milliseconds: (base + _random.nextInt(250)).toInt());
   }
 
-  ClaudeApiException _parseError(http.Response response) {
+  GroqApiException _parseError(http.Response response) {
     var type = 'api_error';
+    var code = '';
     var message = 'HTTP ${response.statusCode}';
     try {
       final body = jsonDecode(utf8.decode(response.bodyBytes));
-      if (body is Map && body['error'] is Map) {
-        final err = body['error'] as Map;
-        type = err['type'] as String? ?? type;
-        message = err['message'] as String? ?? message;
+      if (body case {'error': final Map<String, Object?> err}) {
+        if (err['type'] case final String t) type = t;
+        if (err['code'] case final String c) code = c;
+        if (err['message'] case final String m) message = m;
       }
     } on FormatException {
       // Non-JSON error body (e.g. from a proxy); keep the defaults.
     }
-    return ClaudeApiException(
+    return GroqApiException(
       response.statusCode,
       type,
       message,
-      requestId: response.headers['request-id'],
+      code: code,
+      requestId: response.headers['x-request-id'],
     );
   }
 

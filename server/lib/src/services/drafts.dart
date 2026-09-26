@@ -2,11 +2,11 @@ import 'dart:async';
 
 import 'package:jobwalk_core/jobwalk_core.dart';
 
-import '../claude_client.dart';
 import '../common.dart';
 import '../db/database.dart';
 import '../drafter.dart';
 import '../limits.dart';
+import '../model_api.dart';
 import 'accounts.dart';
 import 'plans.dart';
 
@@ -291,7 +291,7 @@ class DraftService {
         _log({
           'event': 'draft_failed',
           'refused': refused,
-          'cause': cause is ClaudeApiException
+          'cause': cause is ModelApiException
               ? '${cause.statusCode} ${cause.type} ${cause.requestId ?? ''}'
               : '${cause?.runtimeType}',
           'ms': ms,
@@ -304,7 +304,7 @@ class DraftService {
                 'itself.',
           );
         }
-        if (cause is ClaudeApiException && cause.isTransient) return _busy();
+        if (cause is ModelApiException && cause.isTransient) return _busy();
         return ApiError(
           502,
           'draft_failed',

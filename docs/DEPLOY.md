@@ -42,8 +42,11 @@ configuration and prints every problem at once (exit code 78).
 | `DATABASE_POOL_SIZE` | `10` | Per instance. |
 | `JOBWALK_PUBLIC_URL` | `http://localhost:PORT` | Origin of quote links and email links. HTTPS in production. |
 | `JOBWALK_SECRET` | dev value | 32+ random characters. Keys sign-in code hashes and onboarding links. |
+| `JOBWALK_AI_PROVIDER` | `claude` | `groq` drafts with an open-weights model on Groq instead (see below). |
 | `ANTHROPIC_API_KEY` | | Or `JOBWALK_FAKE_MODEL=true` for sample drafts (not in production). |
-| `JOBWALK_MODEL`, `JOBWALK_EFFORT`, `JOBWALK_MAX_TOKENS`, `JOBWALK_FALLBACKS` | Opus 5.5, `high`, 32000, on | |
+| `JOBWALK_MODEL`, `JOBWALK_EFFORT`, `JOBWALK_MAX_TOKENS`, `JOBWALK_FALLBACKS` | Opus 5.5, `high`, 32000, on | With Groq: `qwen/qwen3.8-27b`, `medium` (`low`, `medium`, or `high`), 16000; no fallbacks. |
+| `GROQ_API_KEY`, `GROQ_BASE_URL` | | Required with `JOBWALK_AI_PROVIDER=groq`. |
+| `JOBWALK_GROQ_FREE_TIER` | off | One photo per draft and a shorter answer, to fit Groq's free tier. |
 | `JOBWALK_MAX_CONCURRENT`, `JOBWALK_MAX_QUEUED` | 16, 64 | Drafts in flight per instance and the queue behind them; beyond that, 503 with Retry-After. |
 | `JOBWALK_DRAFT_TIMEOUT_SECONDS` | 170 | |
 | `EMAIL_PROVIDER` | `log` | `resend` in production (`log` prints sign-in codes). |
@@ -65,6 +68,27 @@ configuration and prints every problem at once (exit code 78).
 | `ADMIN_TOKEN` | | 24+ characters. Enables `/admin/*`. |
 | `METRICS_TOKEN` | | Bearer token for `/metrics`. Without it, `/metrics` is off in production. |
 | `JOBWALK_REVIEW_EMAIL`, `JOBWALK_REVIEW_CODE` | | An account that signs in with a fixed six-digit code, for app store review. |
+
+### AI provider
+
+Claude is the default. `JOBWALK_AI_PROVIDER=groq` drafts with Qwen 3.8 27B on
+Groq instead: the same instructions and the same checks on every answer, at a
+fraction of the cost. Run `bin/eval.dart` on real jobs with both providers
+before switching (see [eval/README.md](../eval/README.md)); the pricing
+guidance was written and checked against Claude.
+
+Groq's limits shape what gets sent:
+
+- At most 3 photos per request, each counted as 2,048 tokens. Later photos
+  are left out, and the model is told so.
+- Groq counts the prompt plus `max_completion_tokens` against the account's
+  tokens-per-minute limit before it runs, and refuses a larger request
+  outright. On the free tier that limit is 8,000, and three photos plus the
+  instructions are more than that before the model writes a word.
+  `JOBWALK_GROQ_FREE_TIER=true` sends one photo with light reasoning and
+  shrinks the answer budget to fit (about 3,200 tokens). The free tier also
+  caps each account at 200,000 tokens a day, roughly 25 to 30 drafts in all,
+  so it suits trying Groq, not running a business on it.
 
 ## First deploy (Fly.io)
 

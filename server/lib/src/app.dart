@@ -218,7 +218,7 @@ class JobwalkApp {
       perIp: shared(limits.publicPerIp),
       viewsPerVisitor: shared(limits.viewsPerVisitor),
       metrics: metrics,
-      model: config.fakeModel ? 'demo' : config.drafter.model,
+      model: config.draftModel,
       version: serverVersion,
       metricsToken: config.metricsToken,
       exposeMetrics: !config.isProduction,

@@ -1,4 +1,5 @@
 import 'drafter.dart';
+import 'groq_drafter.dart';
 
 /// Thrown at startup with every configuration problem found, not just the
 /// first.
@@ -31,8 +32,12 @@ class ServerConfig {
     this.runWorker = true,
     this.corsOrigins = const ['*'],
     this.trustedProxies = 1,
+    this.aiProvider = 'claude',
     this.anthropicApiKey,
     this.anthropicBaseUrl,
+    this.groqApiKey,
+    this.groqBaseUrl,
+    this.groqDrafter = const GroqDrafterConfig(),
     this.fakeModel = false,
     this.maxConcurrentDrafts = 16,
     this.maxQueuedDrafts = 64,
@@ -91,14 +96,37 @@ class ServerConfig {
   /// Load balancers between the internet and this server (for client IPs).
   final int trustedProxies;
 
+  /// `claude` (default) or `groq`, which drafts with an open-weights model.
+  final String aiProvider;
+
   final String? anthropicApiKey;
 
   /// Honors `ANTHROPIC_BASE_URL`, like the official SDKs.
   final Uri? anthropicBaseUrl;
 
-  /// Canned sample drafts instead of Claude (development only).
+  final String? groqApiKey;
+
+  /// Honors `GROQ_BASE_URL`, like Groq's SDKs.
+  final Uri? groqBaseUrl;
+
+  /// Canned sample drafts instead of a model (development only).
   final bool fakeModel;
+
+  /// Settings for the provider in use; the other keeps its defaults.
   final DrafterConfig drafter;
+  final GroqDrafterConfig groqDrafter;
+
+  bool get usesGroq => aiProvider == 'groq';
+
+  /// The model drafts use, for logs and the health endpoint.
+  String get draftModel => fakeModel
+      ? 'demo'
+      : usesGroq
+      ? groqDrafter.model
+      : drafter.model;
+
+  String get draftEffort => usesGroq ? groqDrafter.effort : drafter.effort;
+
   final int maxConcurrentDrafts;
   final int maxQueuedDrafts;
   final Duration draftTimeout;
@@ -218,20 +246,40 @@ class ServerConfig {
       problems.add('JOBWALK_SECRET must be at least 32 characters.');
     }
 
+    final provider = str('JOBWALK_AI_PROVIDER') ?? 'claude';
+    if (!const {'claude', 'groq'}.contains(provider)) {
+      problems.add('JOBWALK_AI_PROVIDER must be claude or groq.');
+    }
+    final groq = provider == 'groq';
     final fake = boolVar('JOBWALK_FAKE_MODEL', false);
     final apiKey = str('ANTHROPIC_API_KEY');
+    final groqKey = str('GROQ_API_KEY');
+    final keyName = groq ? 'GROQ_API_KEY' : 'ANTHROPIC_API_KEY';
     if (fake && production) {
       problems.add('JOBWALK_FAKE_MODEL is for development only.');
-    } else if (!fake && apiKey == null) {
+    } else if (!fake && (groq ? groqKey : apiKey) == null) {
       problems.add(
-        'ANTHROPIC_API_KEY is not set. Set it, or set JOBWALK_FAKE_MODEL=true '
-        'for canned sample drafts.',
+        '$keyName is not set. Set it, or set JOBWALK_FAKE_MODEL=true for '
+        'canned sample drafts.',
       );
     }
-    const efforts = {'low', 'medium', 'high', 'xhigh', 'max'};
-    final effort = str('JOBWALK_EFFORT') ?? 'high';
+    final groqFreeTier = boolVar('JOBWALK_GROQ_FREE_TIER', false);
+    final groqPreset = groqFreeTier
+        ? GroqDrafterConfig.freeTier
+        : const GroqDrafterConfig();
+    if (groq && groqFreeTier && production) {
+      warnings.add(
+        "JOBWALK_GROQ_FREE_TIER sends one photo per draft, and Groq's free "
+        'tier allows roughly 25 to 30 drafts a day across all users.',
+      );
+    }
+    final efforts = groq ? GroqDrafterConfig.efforts : DrafterConfig.efforts;
+    final effort = str('JOBWALK_EFFORT') ?? (groq ? groqPreset.effort : 'high');
     if (!efforts.contains(effort)) {
-      problems.add('JOBWALK_EFFORT must be one of ${efforts.join(', ')}.');
+      problems.add(
+        'JOBWALK_EFFORT must be one of ${efforts.join(', ')}'
+        '${groq ? ' with Groq' : ''}.',
+      );
     }
 
     final emailProvider = str('EMAIL_PROVIDER') ?? 'log';
@@ -329,15 +377,31 @@ class ServerConfig {
           .where((o) => o.isNotEmpty)
           .toList(),
       trustedProxies: intVar('JOBWALK_TRUSTED_PROXIES', 1, max: 5),
+      aiProvider: provider,
       anthropicApiKey: apiKey,
       anthropicBaseUrl: urlVar('ANTHROPIC_BASE_URL'),
+      groqApiKey: groqKey,
+      groqBaseUrl: urlVar('GROQ_BASE_URL'),
       fakeModel: fake,
-      drafter: DrafterConfig(
-        model: str('JOBWALK_MODEL') ?? 'claude-opus-5-5',
-        effort: effort,
-        maxTokens: intVar('JOBWALK_MAX_TOKENS', 32000, min: 1000),
-        useFallbacks: boolVar('JOBWALK_FALLBACKS', true),
-      ),
+      drafter: groq
+          ? const DrafterConfig()
+          : DrafterConfig(
+              model: str('JOBWALK_MODEL') ?? 'claude-opus-5-5',
+              effort: effort,
+              maxTokens: intVar('JOBWALK_MAX_TOKENS', 32000, min: 1000),
+              useFallbacks: boolVar('JOBWALK_FALLBACKS', true),
+            ),
+      groqDrafter: groq
+          ? groqPreset.copyWith(
+              model: str('JOBWALK_MODEL'),
+              effort: effort,
+              maxTokens: intVar(
+                'JOBWALK_MAX_TOKENS',
+                groqPreset.maxTokens,
+                min: 1000,
+              ),
+            )
+          : const GroqDrafterConfig(),
       maxConcurrentDrafts: intVar('JOBWALK_MAX_CONCURRENT', 16, min: 1),
       maxQueuedDrafts: intVar('JOBWALK_MAX_QUEUED', 64),
       draftTimeout: Duration(

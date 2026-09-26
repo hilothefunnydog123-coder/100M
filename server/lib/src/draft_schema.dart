@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:jobwalk_core/jobwalk_core.dart';
 
 const _string = {'type': 'string'};
@@ -80,3 +82,25 @@ Map<String, Object?> _object(Map<String, Object?> properties) => {
   'required': properties.keys.toList(),
   'additionalProperties': false,
 };
+
+/// A compact rendering of a JSON schema for prompts, such as
+/// `{"name": string, "tags": [string], "level": "high"|"low"}`. For providers
+/// without structured outputs; it is well under half the size of the schema.
+String schemaShape(Map<String, Object?> schema) {
+  if (schema['enum'] case final List<Object?> values) {
+    return values.map(jsonEncode).join('|');
+  }
+  switch (schema['type']) {
+    case 'object':
+      final properties = schema['properties']! as Map<String, Object?>;
+      final fields = [
+        for (final MapEntry(:key, :value) in properties.entries)
+          '${jsonEncode(key)}: ${schemaShape(value! as Map<String, Object?>)}',
+      ];
+      return '{${fields.join(', ')}}';
+    case 'array':
+      return '[${schemaShape(schema['items']! as Map<String, Object?>)}]';
+    case final type:
+      return '$type';
+  }
+}

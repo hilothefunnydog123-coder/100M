@@ -61,7 +61,8 @@ Sign in with any email address; the code is printed in the API's log
 (`docker compose logs api`). Quotes then sync to the account, links are
 served by the API, and the customer page at `/q/<id>` is the real one. The
 landing page is at `/` and a sample customer quote at `/sample`. For real drafts, set `ANTHROPIC_API_KEY` and drop
-`JOBWALK_FAKE_MODEL`. Deploying: [docs/DEPLOY.md](docs/DEPLOY.md).
+`JOBWALK_FAKE_MODEL` (or draft on Groq: `JOBWALK_AI_PROVIDER=groq` with
+`GROQ_API_KEY`). Deploying: [docs/DEPLOY.md](docs/DEPLOY.md).
 
 ## Development
 

@@ -27,7 +27,7 @@ void main() {
       result('50', 10000, null), // unusable
     ]);
     expect(s.cases, 5);
-    expect(s.priced, 4);
+    expect(s.scored, 4);
     expect(s.unusable, 1);
     expect(s.medianAbsErrorPct, 15);
     expect(s.medianBiasPct, 7.5);
@@ -82,9 +82,43 @@ void main() {
     expect(missing.error, isNotNull);
   });
 
+  test('cases without an actual price still draft and save', () async {
+    final dir = await Directory.systemTemp.createTemp('jobwalk_eval');
+    addTearDown(() => dir.delete(recursive: true));
+    final photo = img.Image(width: 800, height: 600);
+    img.fill(photo, color: img.ColorRgb8(90, 90, 95));
+    File('${dir.path}/drive.png').writeAsBytesSync(img.encodePng(photo));
+    final c = EvalCase.fromJson({
+      'id': 'driveway',
+      'trade': 'pressure_washing',
+      'photos': ['drive.png'],
+    });
+    expect(c.actualTotalCents, isNull);
+    final r = await runCase(c, DemoDrafter(delay: Duration.zero), root: dir);
+    expect(r.usable, isTrue);
+    expect(r.predictedTotalCents, greaterThan(0));
+    expect(r.errorPct, isNull);
+    expect(r.laborHours, greaterThan(0));
+    expect(r.toJson()['actual_total'], isNull);
+    expect((r.draft!['draft'] as Map)['title'], isNotEmpty);
+    expect(r.draft!['stats'], isA<Map<String, Object?>>());
+    final s = EvalSummary([r]);
+    expect(s.scored, 0);
+    expect(s.medianAbsErrorPct, isNull);
+    expect(s.toMarkdown(), contains('1 (0 scored'));
+  });
+
   test('bad manifest lines are reported', () {
     expect(
       () => EvalCase.fromJson({'id': 'x', 'photos': <Object?>[]}),
+      throwsFormatException,
+    );
+    expect(
+      () => EvalCase.fromJson({
+        'id': 'x',
+        'photos': ['a.jpg'],
+        'actual_total': '2,480',
+      }),
       throwsFormatException,
     );
   });

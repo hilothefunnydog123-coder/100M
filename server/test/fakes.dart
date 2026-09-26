@@ -63,6 +63,49 @@ ClaudeMessage refusal() => ClaudeMessage({
   'usage': {'input_tokens': 0, 'output_tokens': 0},
 });
 
+/// Records chat completion requests and replies with queued responses (or
+/// errors), for the Groq drafter.
+class FakeChatApi implements ChatCompletionsApi {
+  FakeChatApi(this.responses);
+
+  /// Each entry is a [ChatCompletion] to return or an exception to throw.
+  final List<Object> responses;
+  final requests = <Map<String, Object?>>[];
+
+  @override
+  Future<ChatCompletion> createChatCompletion(Map<String, Object?> body) async {
+    requests.add(body);
+    if (responses.isEmpty) throw StateError('No fake response queued.');
+    final next = responses.removeAt(0);
+    if (next is ChatCompletion) return next;
+    throw next;
+  }
+}
+
+ChatCompletion chatReply({
+  Object? draft,
+  String? content,
+  String finishReason = 'stop',
+  String model = 'qwen/qwen3.8-27b',
+  int cachedTokens = 0,
+}) => ChatCompletion({
+  'id': 'chatcmpl-test',
+  'object': 'chat.completion',
+  'model': model,
+  'choices': [
+    {
+      'index': 0,
+      'message': {'role': 'assistant', 'content': content ?? jsonEncode(draft)},
+      'finish_reason': finishReason,
+    },
+  ],
+  'usage': {
+    'prompt_tokens': 8000,
+    'completion_tokens': 4000,
+    'prompt_tokens_details': {'cached_tokens': cachedTokens},
+  },
+});
+
 /// A realistic model response: the fence sample in wire format.
 Map<String, Object?> draftJson() => SampleJob.fence.draft.toJson();
 

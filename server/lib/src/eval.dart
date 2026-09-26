@@ -7,14 +7,14 @@ import 'package:jobwalk_core/photo_pipeline.dart';
 
 import 'drafter.dart';
 
-/// One past job with a known outcome: the photos from the walkthrough and
-/// what the contractor actually charged.
+/// One past job: the photos from the walkthrough and, ideally, what the
+/// contractor actually charged.
 class EvalCase {
   const EvalCase({
     required this.id,
     required this.trade,
     required this.photos,
-    required this.actualTotalCents,
+    this.actualTotalCents,
     this.note = '',
     this.zip = '',
     this.rates,
@@ -26,7 +26,9 @@ class EvalCase {
 
   /// Paths, relative to the manifest.
   final List<String> photos;
-  final int actualTotalCents;
+
+  /// Null for cases that only compare drafts, such as the app's samples.
+  final int? actualTotalCents;
   final String note;
   final String zip;
 
@@ -41,16 +43,17 @@ class EvalCase {
     final id = json['id'];
     final photos = json['photos'];
     final total = json['actual_total'];
-    if (id is! String || photos is! List || photos.isEmpty || total is! num) {
-      throw const FormatException(
-        'Each case needs id, photos, and actual_total.',
-      );
+    if (id is! String || photos is! List || photos.isEmpty) {
+      throw const FormatException('Each case needs an id and photos.');
+    }
+    if (total != null && total is! num) {
+      throw const FormatException('actual_total must be a number.');
     }
     return EvalCase(
       id: id,
       trade: Trade.fromId(json['trade']),
       photos: [for (final p in photos) '$p'],
-      actualTotalCents: (total * 100).round(),
+      actualTotalCents: total is num ? (total * 100).round() : null,
       note: json['note'] as String? ?? '',
       zip: json['zip'] as String? ?? '',
       rates: json['rates'] == null ? null : Rates.fromJson(json['rates']),
@@ -77,11 +80,13 @@ class EvalResult {
     this.costUsd,
     this.latencyMs = 0,
     this.lines = 0,
+    this.laborHours = 0,
+    this.draft,
   });
 
   final String id;
   final Trade trade;
-  final int actualTotalCents;
+  final int? actualTotalCents;
   final int? predictedTotalCents;
   final String option;
   final bool usable;
@@ -89,18 +94,23 @@ class EvalResult {
   final double? costUsd;
   final int latencyMs;
   final int lines;
+  final double laborHours;
+
+  /// The model's draft with usage stats, saved for side-by-side review.
+  final Map<String, Object?>? draft;
 
   /// Signed error in percent: positive means the draft was high.
   double? get errorPct {
     final p = predictedTotalCents;
-    if (p == null || actualTotalCents == 0) return null;
-    return (p - actualTotalCents) / actualTotalCents * 100;
+    final a = actualTotalCents;
+    if (p == null || a == null || a == 0) return null;
+    return (p - a) / a * 100;
   }
 
   Map<String, Object?> toJson() => {
     'id': id,
     'trade': trade.id,
-    'actual_total': actualTotalCents / 100,
+    'actual_total': actualTotalCents == null ? null : actualTotalCents! / 100,
     'predicted_total': predictedTotalCents == null
         ? null
         : predictedTotalCents! / 100,
@@ -111,6 +121,7 @@ class EvalResult {
     'cost_usd': costUsd,
     'latency_ms': latencyMs,
     'lines': lines,
+    'labor_hours': laborHours,
   };
 }
 
@@ -145,6 +156,7 @@ Future<EvalResult> runCase(
         note: c.note,
       ),
     );
+    final saved = {...draft.toJson(), 'stats': draft.stats.toJson()};
     if (!draft.draft.isUsable) {
       return EvalResult(
         id: c.id,
@@ -152,6 +164,7 @@ Future<EvalResult> runCase(
         actualTotalCents: c.actualTotalCents,
         costUsd: draft.stats.estimatedCostUsd,
         latencyMs: watch.elapsedMilliseconds,
+        draft: saved,
       );
     }
     final quote = QuoteBuilder.fromDraft(
@@ -162,16 +175,19 @@ Future<EvalResult> runCase(
       now: DateTime.now().toUtc(),
     );
     final tier = _matchTier(quote, c.option);
+    final totals = quote.totals(tier?.id);
     return EvalResult(
       id: c.id,
       trade: c.trade,
       actualTotalCents: c.actualTotalCents,
-      predictedTotalCents: quote.totals(tier?.id).totalCents,
+      predictedTotalCents: totals.totalCents,
       option: tier?.name ?? '',
       usable: true,
       costUsd: draft.stats.estimatedCostUsd,
       latencyMs: watch.elapsedMilliseconds,
-      lines: quote.totals(tier?.id).lineCount,
+      lines: totals.lineCount,
+      laborHours: totals.laborHours,
+      draft: saved,
     );
   } on Object catch (e) {
     return EvalResult(
@@ -204,7 +220,9 @@ class EvalSummary {
   List<double> get _errors => [for (final r in results) ?r.errorPct];
 
   int get cases => results.length;
-  int get priced => _errors.length;
+
+  /// Cases with an actual price and a usable draft to compare it with.
+  int get scored => _errors.length;
   int get failed => results.where((r) => r.error != null).length;
   int get unusable => results.where((r) => r.error == null && !r.usable).length;
 
@@ -214,9 +232,9 @@ class EvalSummary {
   /// Median signed error: positive means drafts run high.
   double? get medianBiasPct => _median(_errors);
 
-  double? withinPct(double band) => priced == 0
+  double? withinPct(double band) => scored == 0
       ? null
-      : _errors.where((e) => e.abs() <= band).length / priced * 100;
+      : _errors.where((e) => e.abs() <= band).length / scored * 100;
 
   double? get meanCostUsd {
     final costs = [for (final r in results) ?r.costUsd];
@@ -231,7 +249,7 @@ class EvalSummary {
 
   Map<String, Object?> toJson() => {
     'cases': cases,
-    'priced': priced,
+    'scored': scored,
     'failed': failed,
     'unusable': unusable,
     'median_abs_error_pct': medianAbsErrorPct,
@@ -261,7 +279,7 @@ class EvalSummary {
       ..writeln('| Metric | Value |')
       ..writeln('|---|---|')
       ..writeln(
-        '| Cases | $cases ($priced priced, $unusable unusable, '
+        '| Cases | $cases ($scored scored, $unusable unusable, '
         '$failed failed) |',
       )
       ..writeln('| Median abs. error of total | ${pct(medianAbsErrorPct)} |')

@@ -189,6 +189,13 @@ void main() {
       );
       expect(busy.status, 503);
       expect(busy.retryAfter, isNotNull);
+      final groqBusy = await failWith(
+        DraftFailed(
+          'rate limited',
+          cause: GroqApiException(429, 'tokens', 'Rate limit reached'),
+        ),
+      );
+      expect(groqBusy.status, 503);
       expect((await failWith(const Overloaded())).status, 503);
       expect((await failWith(StateError('?'))).status, 502);
 

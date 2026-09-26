@@ -36,15 +36,26 @@ class Setup {
     }
 
     final client = http.Client();
-    final QuoteDrafter drafter = config.fakeModel
-        ? DemoDrafter()
-        : Drafter(
-            api: ClaudeClient(
-              apiKey: config.anthropicApiKey!,
-              baseUrl: config.anthropicBaseUrl,
-            ),
-            config: config.drafter,
-          );
+    final QuoteDrafter drafter;
+    if (config.fakeModel) {
+      drafter = DemoDrafter();
+    } else if (config.usesGroq) {
+      drafter = GroqDrafter(
+        api: GroqClient(
+          apiKey: config.groqApiKey!,
+          baseUrl: config.groqBaseUrl,
+        ),
+        config: config.groqDrafter,
+      );
+    } else {
+      drafter = Drafter(
+        api: ClaudeClient(
+          apiKey: config.anthropicApiKey!,
+          baseUrl: config.anthropicBaseUrl,
+        ),
+        config: config.drafter,
+      );
+    }
     final EmailSender email = config.emailProvider == 'resend'
         ? ResendEmailSender(
             apiKey: config.resendApiKey!,

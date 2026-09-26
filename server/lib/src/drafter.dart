@@ -18,9 +18,11 @@ class DrafterConfig {
   /// [effort] is the lever for depth, latency, and cost.
   final String model;
 
-  /// `low` | `medium` | `high` | `xhigh` | `max`. Measuring and pricing a
-  /// job rewards careful reasoning, so this defaults to high.
+  /// One of [efforts]. Measuring and pricing a job rewards careful
+  /// reasoning, so this defaults to high.
   final String effort;
+
+  static const efforts = {'low', 'medium', 'high', 'xhigh', 'max'};
 
   /// Room for adaptive thinking plus a long quote.
   final int maxTokens;
@@ -55,13 +57,28 @@ class DraftStats {
   final models = <String>{};
   Duration latency = Duration.zero;
 
-  void add(ClaudeMessage m) {
+  void add(ClaudeMessage m) => record(
+    model: m.model,
+    inputTokens: m.inputTokens,
+    outputTokens: m.outputTokens,
+    cacheReadTokens: m.cacheReadTokens,
+    cacheWriteTokens: m.cacheWriteTokens,
+  );
+
+  /// Counts one model call. [inputTokens] excludes cache reads and writes.
+  void record({
+    required String model,
+    int inputTokens = 0,
+    int outputTokens = 0,
+    int cacheReadTokens = 0,
+    int cacheWriteTokens = 0,
+  }) {
     attempts++;
-    inputTokens += m.inputTokens;
-    outputTokens += m.outputTokens;
-    cacheReadTokens += m.cacheReadTokens;
-    cacheWriteTokens += m.cacheWriteTokens;
-    if (m.model.isNotEmpty) models.add(m.model);
+    this.inputTokens += inputTokens;
+    this.outputTokens += outputTokens;
+    this.cacheReadTokens += cacheReadTokens;
+    this.cacheWriteTokens += cacheWriteTokens;
+    if (model.isNotEmpty) models.add(model);
   }
 
   /// Estimated cost in USD from list prices, or null for unknown models.
@@ -107,6 +124,8 @@ const _pricesPerMTok = <String, (double, double, double, double)>{
   'claude-fable-5-1': (10, 50, 0.25, 12.5),
   'claude-sonnet-5': (2, 10, 0.20, 2.5),
   'claude-haiku-4-5': (1, 5, 0.10, 1.25),
+  // Groq's on-demand price; cached input is counted at the full input price.
+  'qwen/qwen3.8-27b': (0.80, 4, 0.80, 0),
 };
 
 class Draft {
