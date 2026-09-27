@@ -34,7 +34,9 @@ can take the apps over later.
   Google Play's billing, which Jobwalk doesn't). A personal account made
   after November 13, 2023 must run a closed test with at least 12 testers
   opted in for 14 days in a row before it can publish to production. Run
-  the beta as that closed test: each crew member who joins counts.
+  the beta as that closed test: each crew member who joins counts. After
+  forming a company, open an organization account and transfer the app
+  to it; the listing, reviews, and installs go with it.
 
 ## iOS
 

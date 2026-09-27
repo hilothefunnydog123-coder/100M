@@ -24,7 +24,8 @@ in profit to the owner**. That shapes every decision:
 - It starts as a sole proprietorship. Stripe, Apple, and Google all take
   an individual, so there's no company to form before launch. An LLC can
   come later, for liability protection and to publish under the company
-  name (both stores move the apps over).
+  name: Apple converts the account, and Google Play transfers the app to
+  a company account.
 
 ## The problem
 
