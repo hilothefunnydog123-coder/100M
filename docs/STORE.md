@@ -19,6 +19,23 @@ Xcode.
   on the server (see [DEPLOY.md](DEPLOY.md)); reviewers sign in with that
   email and fixed code.
 
+## Accounts without a company
+
+A sole proprietor publishes under their own name in both stores; an LLC
+can take the apps over later.
+
+- **Apple** enrolls you as an individual, and the App Store lists your
+  legal name as the seller. After forming a company, ask Apple to convert
+  the membership to an organization (Membership details, Convert to
+  Organization); that needs the company's D-U-N-S number, and the apps
+  stay put.
+- **Google Play** shows a personal account's legal name, country, and
+  email on the listing (the full address only for apps that sell through
+  Google Play's billing, which Jobwalk doesn't). A personal account made
+  after November 13, 2023 must run a closed test with at least 12 testers
+  opted in for 14 days in a row before it can publish to production. Run
+  the beta as that closed test: each crew member who joins counts.
+
 ## iOS
 
 1. Join the Apple Developer Program ($99 a year) and create the app in
@@ -64,7 +81,9 @@ HTTPS encryption.
    Without this file, release builds are signed with the debug key, which
    Play rejects.
 4. Build and upload `build/app/outputs/bundle/release/app-release.aab` to
-   the Internal testing track, then add testers by email:
+   the Internal testing track, then add testers by email. With a personal
+   account, also run a closed test for 14 days with 12 or more testers
+   before applying for production access (see above):
 
    ```sh
    cd app

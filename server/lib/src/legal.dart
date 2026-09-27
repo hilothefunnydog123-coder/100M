@@ -12,6 +12,8 @@ class LegalInfo {
     this.aiProvider = 'claude',
     this.emailProvider = 'log',
     this.storage = 'file',
+    this.databaseProvider,
+    this.storageProvider,
     this.payments = false,
     this.platformFeeBps = 100,
     this.processingFeeBps = 290,
@@ -29,6 +31,8 @@ class LegalInfo {
     aiProvider: c.fakeModel ? 'demo' : c.aiProvider,
     emailProvider: c.emailProvider,
     storage: c.storage,
+    databaseProvider: providerFor(Uri.tryParse(c.databaseUrl)?.host),
+    storageProvider: c.storage == 's3' ? providerFor(c.s3Endpoint?.host) : null,
     payments: c.stripeEnabled,
     platformFeeBps: c.platformFeeBps,
     processingFeeBps: c.processingFeeBps,
@@ -50,6 +54,11 @@ class LegalInfo {
   final String aiProvider;
   final String emailProvider;
   final String storage;
+
+  /// The companies hosting the database and the photos, when [providerFor]
+  /// can tell from the host; null ones are described without a name.
+  final String? databaseProvider;
+  final String? storageProvider;
   final bool payments;
   final int platformFeeBps;
   final int processingFeeBps;
@@ -65,6 +74,18 @@ class LegalInfo {
     'groq' => 'Groq',
     _ => null,
   };
+}
+
+/// The company behind a database or storage host, for the hosts Jobwalk's
+/// docs set up.
+String? providerFor(String? host) {
+  final h = host?.toLowerCase() ?? '';
+  bool under(String domain) => h == domain || h.endsWith('.$domain');
+  if (under('supabase.co') || under('supabase.com')) return 'Supabase';
+  if (under('r2.cloudflarestorage.com')) return 'Cloudflare';
+  if (under('amazonaws.com')) return 'Amazon Web Services';
+  if (under('neon.tech')) return 'Neon';
+  return null;
 }
 
 const _legalCss = '''
@@ -118,6 +139,28 @@ String _percent(int bps) {
   return pct == pct.roundToDouble() ? '${pct.round()}' : '$pct';
 }
 
+/// Who keeps the data and runs the servers, by name where the config says.
+List<String> _hosting(LegalInfo info) {
+  final db = info.databaseProvider;
+  final photos = info.storage == 's3' ? info.storageProvider : null;
+  return [
+    if (db != null && db == photos)
+      '<li><b>${esc(db)}</b> hosts our database and keeps job photos.</li>'
+    else ...[
+      if (db != null) '<li><b>${esc(db)}</b> hosts our database.</li>',
+      if (photos != null)
+        '<li><b>${esc(photos)}</b> keeps job photos.</li>'
+      else if (info.storage == 's3')
+        '<li>A cloud storage provider keeps job photos.</li>',
+    ],
+    db == null
+        ? '<li>Our hosting and database providers run the servers the '
+              'service lives on.</li>'
+        : '<li>Our hosting provider runs the servers the service lives '
+              'on.</li>',
+  ];
+}
+
 /// The privacy policy at `/privacy`.
 String privacyPage(LegalInfo info) {
   final company = esc(info.company);
@@ -149,10 +192,7 @@ String privacyPage(LegalInfo info) {
       '<li><b>Stripe</b> handles subscriptions and card deposits.</li>',
     if (info.emailProvider == 'resend')
       '<li><b>Resend</b> delivers sign-in codes and notification emails.</li>',
-    if (info.storage == 's3')
-      '<li>A cloud storage provider keeps job photos.</li>',
-    '<li>Our hosting and database providers run the servers the service '
-        'lives on.</li>',
+    ..._hosting(info),
   ];
 
   return _legalPage(

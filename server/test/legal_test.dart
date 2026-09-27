@@ -26,6 +26,36 @@ void main() {
     final bare = privacyPage(const LegalInfo());
     expect(bare, isNot(contains('<b>Resend</b>')));
     expect(bare, isNot(contains('<b>Stripe</b>')));
+    expect(bare, contains('Our hosting and database providers'));
+  });
+
+  test('names the database and photo hosts it can tell', () {
+    final supabase = privacyPage(
+      const LegalInfo(
+        storage: 's3',
+        databaseProvider: 'Supabase',
+        storageProvider: 'Supabase',
+      ),
+    );
+    expect(
+      supabase,
+      contains('<b>Supabase</b> hosts our database and keeps job photos.'),
+    );
+    expect(supabase, contains('Our hosting provider runs the servers'));
+    final split = privacyPage(
+      const LegalInfo(
+        storage: 's3',
+        databaseProvider: 'Neon',
+        storageProvider: 'Cloudflare',
+      ),
+    );
+    expect(split, contains('<b>Neon</b> hosts our database.'));
+    expect(split, contains('<b>Cloudflare</b> keeps job photos.'));
+    expect(providerFor('aws-0-us-east-1.pooler.supabase.com'), 'Supabase');
+    expect(providerFor('abcd.storage.supabase.co'), 'Supabase');
+    expect(providerFor('acct.r2.cloudflarestorage.com'), 'Cloudflare');
+    expect(providerFor('notsupabase.co'), isNull);
+    expect(providerFor('db'), isNull);
   });
 
   test('the terms carry the operator and its fees', () {

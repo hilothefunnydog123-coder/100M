@@ -20,6 +20,9 @@ kill_timeout = "200s"
   JOBWALK_TRUSTED_PROXIES = "1"
   STORAGE = "s3"
   PORT = "8080"
+  # Supabase's session pooler allows 15 connections in all by default:
+  # 5 per machine leaves room for the release command.
+  DATABASE_POOL_SIZE = "5"
 
 [http_service]
   internal_port = 8080

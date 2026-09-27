@@ -263,6 +263,34 @@ class ServerConfig {
             ? null
             : 'postgres://postgres:postgres@localhost:5432/jobwalk');
     if (databaseUrl == null) problems.add('DATABASE_URL is required.');
+    final databasePoolSize = intVar('DATABASE_POOL_SIZE', 10, min: 1, max: 200);
+    if (databaseUrl != null && databaseUrl.contains('[YOUR-PASSWORD]')) {
+      problems.add(
+        'DATABASE_URL still says [YOUR-PASSWORD]. Put your database password '
+        'there.',
+      );
+    }
+    final databaseHost = Uri.tryParse(databaseUrl ?? '');
+    if (databaseHost != null && _isSupabase(databaseHost.host)) {
+      // Migrations hold a session lock, which a transaction pooler would
+      // hand to other clients mid-migration.
+      if (databaseHost.port == 6543) {
+        problems.add(
+          "DATABASE_URL uses Supabase's transaction pooler (port 6543). Use "
+          'the session pooler (port 5432) or the direct connection.',
+        );
+      } else if (databaseHost.host.toLowerCase().endsWith(
+            '.pooler.supabase.com',
+          ) &&
+          databasePoolSize > 7) {
+        warnings.add(
+          "Supabase's session pooler allows 15 connections in all unless you "
+          'raise its Pool Size (Database settings), and each server opens up '
+          'to DATABASE_POOL_SIZE ($databasePoolSize). With two servers, set '
+          'it to 5.',
+        );
+      }
+    }
 
     var publicUrl = urlVar('JOBWALK_PUBLIC_URL');
     if (publicUrl == null) {
@@ -364,6 +392,22 @@ class ServerConfig {
           problems.add('$name is required for STORAGE=s3.');
         }
       }
+      if (s3Endpoint != null && _isSupabase(s3Endpoint.host)) {
+        if (!s3Endpoint.path
+            .replaceAll(RegExp(r'/+$'), '')
+            .endsWith('/storage/v1/s3')) {
+          problems.add(
+            'S3_ENDPOINT for Supabase ends in /storage/v1/s3. Copy it from '
+            'Storage, S3 settings.',
+          );
+        }
+        if ((str('S3_REGION') ?? 'auto') == 'auto') {
+          problems.add(
+            "S3_REGION must be your Supabase project's region, such as "
+            'us-east-1. Copy it from Storage, S3 settings.',
+          );
+        }
+      }
     } else if (storage == 'file') {
       if (production) {
         warnings.add(
@@ -434,7 +478,7 @@ class ServerConfig {
       env: mode,
       port: intVar('PORT', 8080, min: 1, max: 65535),
       databaseUrl: databaseUrl ?? '',
-      databasePoolSize: intVar('DATABASE_POOL_SIZE', 10, min: 1, max: 200),
+      databasePoolSize: databasePoolSize,
       migrateOnStart: boolVar('JOBWALK_MIGRATE_ON_START', true),
       runWorker: boolVar('JOBWALK_RUN_WORKER', true),
       publicUrl: publicUrl.replace(path: '', query: null, fragment: null),
@@ -521,4 +565,9 @@ class ServerConfig {
     if (problems.isNotEmpty) throw ConfigError(problems);
     return config;
   }
+}
+
+bool _isSupabase(String host) {
+  final h = host.toLowerCase();
+  return h.endsWith('.supabase.co') || h.endsWith('.supabase.com');
 }

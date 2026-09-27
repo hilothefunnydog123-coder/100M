@@ -3,13 +3,14 @@
 The API is one stateless Dart binary in front of Postgres. It serves the
 app's API, the customer quote pages, the landing page, and Stripe
 webhooks, and runs background jobs (emails, reminders, cleanup) from a
-queue in Postgres. Photos go to S3-compatible storage.
+queue in Postgres. Photos go to S3-compatible storage. One Supabase
+project provides both (see [Supabase](#supabase-database-and-photos)).
 
 ```
- phones ──HTTPS──▶  api (1..n instances)  ──▶  Postgres
- customers ──────▶    ├─ Claude API (drafts)
+ phones ──HTTPS──▶  api (1..n instances)  ──▶  Postgres (Supabase)
+ customers ──────▶    ├─ AI provider (drafts)
  Stripe ─webhooks─▶   ├─ Resend (email)
-                      ├─ S3 / R2 (photos)
+                      ├─ Supabase Storage (photos)
                       └─ Stripe (billing, Connect)
 ```
 
@@ -22,10 +23,10 @@ cursors never skip a change.
 
 | Service | Used for | Suggested |
 |---|---|---|
-| Postgres 14+ | Everything | Neon, Supabase, Fly Postgres, RDS |
-| Anthropic API key | Drafting quotes | Set a monthly spend limit |
+| Postgres 14+ | Everything | Supabase; Neon or RDS work too |
+| An AI provider key | Drafting quotes | Anthropic, or Gemini from a Google Cloud project with billing on; set a monthly spend limit |
 | Resend | Sign-in codes, notifications | Verify your sending domain |
-| S3-compatible bucket | Job photos | Cloudflare R2 (no egress fees) |
+| S3-compatible bucket | Job photos | Supabase Storage; Cloudflare R2 or AWS S3 work too |
 | Stripe (optional) | Subscriptions, deposits | Billing + Connect (Express) |
 | A host for containers | The API | Fly.io (config in `server/fly.toml`), Render, Railway, ECS |
 
@@ -38,8 +39,8 @@ configuration and prints every problem at once (exit code 78).
 | Variable | Default | Notes |
 |---|---|---|
 | `JOBWALK_ENV` | `development` | `production` turns on the strict checks and HSTS. |
-| `DATABASE_URL` | local Postgres | TLS is required unless the host is local or private (Compose service, `.internal`, `.flycast`). Add `?sslmode=` to override. |
-| `DATABASE_POOL_SIZE` | `10` | Per instance. |
+| `DATABASE_URL` | local Postgres | TLS is required unless the host is local or private (Compose service, `.internal`, `.flycast`). Add `?sslmode=` to override. With Supabase, the session pooler string (port 5432); the server refuses the transaction pooler (6543). |
+| `DATABASE_POOL_SIZE` | `10` | Per instance. Supabase's session pooler allows 15 connections in all unless you raise its Pool Size, so `fly.toml` sets 5 for its two machines. |
 | `JOBWALK_PUBLIC_URL` | `http://localhost:PORT` | Origin of quote links and email links. HTTPS in production. |
 | `JOBWALK_SECRET` | dev value | 32+ random characters. Keys sign-in code hashes and onboarding links. |
 | `JOBWALK_AI_PROVIDER` | `claude` | `gemini` or `groq` draft with another provider (see below). |
@@ -53,7 +54,7 @@ configuration and prints every problem at once (exit code 78).
 | `EMAIL_PROVIDER` | `log` | `resend` in production (`log` prints sign-in codes). |
 | `RESEND_API_KEY`, `EMAIL_FROM`, `EMAIL_REPLY_TO` | | |
 | `STORAGE` | `file` | `s3` for more than one instance. `file` writes under `STORAGE_DIR`. |
-| `S3_ENDPOINT`, `S3_BUCKET`, `S3_REGION`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` | | Path-style requests; works with R2, MinIO, AWS. Photos are served by short-lived signed URLs. |
+| `S3_ENDPOINT`, `S3_BUCKET`, `S3_REGION`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` | | Path-style requests; works with Supabase Storage, R2, MinIO, AWS. With Supabase, the endpoint ends in `/storage/v1/s3` and the region is the project's. Photos are served by short-lived signed URLs. |
 | `STRIPE_SECRET_KEY` | | Billing and deposits are off without it. |
 | `STRIPE_WEBHOOK_SECRET`, `STRIPE_CONNECT_WEBHOOK_SECRET` | | Signing secrets of the two endpoints (see below). |
 | `STRIPE_PRICE_PRO`, `STRIPE_PRICE_CREW` | | Recurring price ids. |
@@ -70,7 +71,7 @@ configuration and prints every problem at once (exit code 78).
 | `ADMIN_TOKEN` | | 24+ characters. Enables `/admin/*`. |
 | `METRICS_TOKEN` | | Bearer token for `/metrics`. Without it, `/metrics` is off in production. |
 | `JOBWALK_REVIEW_EMAIL`, `JOBWALK_REVIEW_CODE` | | An account that signs in with a fixed six-digit code, for app store review. |
-| `JOBWALK_LEGAL_NAME`, `JOBWALK_LEGAL_ADDRESS`, `JOBWALK_GOVERNING_LAW` | `Jobwalk`, none, none | Who runs the service, for the privacy policy and terms at `/privacy` and `/terms`. The governing law is a US state, e.g. `Texas`. |
+| `JOBWALK_LEGAL_NAME`, `JOBWALK_LEGAL_ADDRESS`, `JOBWALK_GOVERNING_LAW` | `Jobwalk`, none, none | Who runs the service, for the privacy policy and terms at `/privacy` and `/terms`: a sole proprietor's own legal name, or a company's registered name. The address is optional (a mailbox address works). The governing law is a US state, e.g. `Texas`. |
 | `JOBWALK_CONTACT_EMAIL` | `EMAIL_REPLY_TO`, else the `EMAIL_FROM` address | Where the legal pages send privacy and data requests. |
 
 ### AI provider
@@ -102,24 +103,82 @@ shape what gets sent:
   caps each account at 200,000 tokens a day, roughly 25 to 30 drafts in all,
   so it suits trying Groq, not running a business on it.
 
+## Supabase (database and photos)
+
+One Supabase project holds the database and the job photos. Jobwalk uses
+it as plain Postgres and plain S3 storage, not through Supabase's Auth or
+its Data API, so there's no Supabase code in the app.
+
+1. **Create the project** at [supabase.com](https://supabase.com), in the
+   region nearest the server: East US (North Virginia) is next to Fly's
+   `iad`, where `fly.toml` runs it. Use a long database password of
+   letters and numbers; `@`, `#`, `/`, or `?` would have to be
+   URL-encoded in the connection string. Leave **Automatically expose new
+   tables** unchecked (the default for new projects).
+2. **Database.** Click **Connect**, choose **Session pooler**, copy the
+   URI, and put your password where it says `[YOUR-PASSWORD]`. That's
+   `DATABASE_URL`:
+
+   ```
+   postgresql://postgres.<ref>:<password>@aws-0-us-east-1.pooler.supabase.com:5432/postgres
+   ```
+
+   The session pooler works over IPv4 from any host. The direct
+   connection (`db.<ref>.supabase.co`) is IPv6 only, and the transaction
+   pooler (port 6543) would break the lock migrations hold, so the server
+   refuses it. The session pooler allows 15 connections in all unless you
+   raise **Pool Size** in Database settings; `fly.toml` gives each of its
+   two machines 5.
+3. **Photos.** In **Storage**, create a private bucket named `jobwalk`.
+   In Storage's **S3** settings, turn the S3 connection on if it's off,
+   copy the **Endpoint** and **Region**, and create an access key:
+
+   ```
+   STORAGE=s3
+   S3_ENDPOINT=https://<ref>.storage.supabase.co/storage/v1/s3
+   S3_REGION=us-east-1
+   S3_BUCKET=jobwalk
+   S3_ACCESS_KEY_ID=...
+   S3_SECRET_ACCESS_KEY=...
+   ```
+
+   The access key can read and write every bucket, so it goes to the
+   server only. Phones get photos through signed links that last 10
+   minutes.
+4. **The first deploy creates the tables** (the release command runs
+   `/app/migrate`). Each has row level security with no policies, so the
+   Data API can't read them even if it's turned on; the server owns the
+   tables and isn't affected. Browse the data in the Table Editor, but
+   change it through the app: hand edits skip the revisions that keep
+   phones in sync.
+5. **Plan.** Free is enough to try it: 500 MB database, 1 GB of photos,
+   5 GB of downloads a month, no backups, and the project pauses after a
+   week without use. Move to Pro ($25 a month: 8 GB database, 100 GB of
+   photos, 250 GB of downloads, daily backups kept 7 days, no pausing)
+   before the first real customer.
+
 ## First deploy (Fly.io)
 
 ```sh
 # From the repository root.
 fly launch --no-deploy --copy-config --config server/fly.toml
 fly secrets set --config server/fly.toml \
-  DATABASE_URL=... JOBWALK_PUBLIC_URL=https://jobwalk.app \
+  DATABASE_URL='postgresql://postgres.<ref>:<password>@aws-0-us-east-1.pooler.supabase.com:5432/postgres' \
+  JOBWALK_PUBLIC_URL=https://jobwalk.app \
   JOBWALK_SECRET="$(openssl rand -base64 48)" \
   ANTHROPIC_API_KEY=... EMAIL_PROVIDER=resend RESEND_API_KEY=... \
   EMAIL_FROM='Jobwalk <hello@jobwalk.app>' \
-  S3_ENDPOINT=... S3_BUCKET=... S3_ACCESS_KEY_ID=... S3_SECRET_ACCESS_KEY=... \
+  S3_ENDPOINT=https://<ref>.storage.supabase.co/storage/v1/s3 S3_REGION=us-east-1 \
+  S3_BUCKET=jobwalk S3_ACCESS_KEY_ID=... S3_SECRET_ACCESS_KEY=... \
   ADMIN_TOKEN="$(openssl rand -hex 24)" METRICS_TOKEN="$(openssl rand -hex 24)"
 fly deploy --config server/fly.toml --dockerfile server/Dockerfile \
   --build-arg VERSION="$(git rev-parse --short HEAD)" .
 ```
 
 `fly.toml` runs migrations as the release command, keeps two machines up,
-checks `/readyz`, and gives in-flight drafts 200 seconds on shutdown.
+checks `/readyz`, and gives in-flight drafts 200 seconds on shutdown. It
+sets `STORAGE=s3` and `DATABASE_POOL_SIZE=5`; everything secret goes in
+`fly secrets`, never in the file.
 Point your domain at the app and check:
 
 ```sh
@@ -187,8 +246,10 @@ background jobs by kind and outcome.
 - `GET /admin/jobs` (failed) and `GET /admin/jobs?state=pending`
 - `POST /admin/jobs/<id>/retry`
 
-**Backups.** Use your provider's point-in-time recovery for Postgres and
-object versioning (or a replication rule) on the photo bucket. The
+**Backups.** Supabase Pro backs up the database daily and keeps 7 days;
+add point-in-time recovery once losing a day of quotes would hurt. Its
+storage keeps no old versions of photos, so for a second copy, sync the
+bucket elsewhere now and then with any S3 tool and the same keys. The
 database holds everything else.
 
 **Migrations.** Numbered, applied in order under an advisory lock, each in

@@ -52,6 +52,54 @@ void main() {
     expect(url.queryParameters['X-Amz-Expires'], '86400');
   });
 
+  test('signs Supabase Storage requests the way botocore does', () async {
+    // Supabase's S3 endpoint has a path, which belongs in the signature.
+    // Expected values come from botocore 1.43 (S3SigV4Auth and
+    // S3SigV4QueryAuth) signing the same requests.
+    final sent = <http.Request>[];
+    final store = S3ObjectStore(
+      endpoint: Uri.parse(
+        'https://abcdefghijklmnop.storage.supabase.co/storage/v1/s3',
+      ),
+      bucket: 'photos',
+      region: 'us-east-1',
+      accessKey: 'a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6',
+      secretKey:
+          'f00dfeedf00dfeedf00dfeedf00dfeedf00dfeedf00dfeedf00dfeedf00dfeed',
+      client: MockClient((r) async {
+        sent.add(r);
+        return http.Response('', 200);
+      }),
+      clock: () => DateTime.utc(2026, 9, 27, 12),
+    );
+    await store.put(
+      'b/b_1/p_1.jpg',
+      Uint8List.fromList([1, 2, 3]),
+      contentType: 'image/jpeg',
+    );
+    expect(
+      sent.single.url.toString(),
+      'https://abcdefghijklmnop.storage.supabase.co/storage/v1/s3/photos/b/'
+      'b_1/p_1.jpg',
+    );
+    expect(
+      sent.single.headers['authorization'],
+      'AWS4-HMAC-SHA256 Credential=a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6/20260927/'
+      'us-east-1/s3/aws4_request, SignedHeaders=content-type;host;'
+      'x-amz-content-sha256;x-amz-date, Signature=c976369085fbe60114b51298b4'
+      'caad63630459418c3f63f73d98fcc7b1a95d47',
+    );
+    final url = store.signedUrl(
+      'b/b_1/p_1.jpg',
+      expires: const Duration(minutes: 10),
+    )!;
+    expect(url.path, '/storage/v1/s3/photos/b/b_1/p_1.jpg');
+    expect(
+      url.queryParameters['X-Amz-Signature'],
+      '2167a323ac4df22a936f0d6cc9502999111493e57f984adfa743c4f43606b40d',
+    );
+  });
+
   group('S3 store', () {
     late List<http.Request> requests;
     late S3ObjectStore store;

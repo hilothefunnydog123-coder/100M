@@ -21,6 +21,10 @@ in profit to the owner**. That shapes every decision:
 - Growth is paid for out of revenue (content, referrals, affiliates), not
   with ads bought at a loss.
 - Nothing that needs a sales team: crews sign up, try it, and pay by card.
+- It starts as a sole proprietorship. Stripe, Apple, and Google all take
+  an individual, so there's no company to form before launch. An LLC can
+  come later, for liability protection and to publish under the company
+  name (both stores move the apps over).
 
 ## The problem
 
@@ -115,8 +119,11 @@ Per paying crew per month on Pro (*assumptions* marked by ~):
 | Replacing churn: ~4% a month at ~$100 blended acquisition cost | ~-$4.00 |
 | **Net per crew** | **~$25.40** |
 
-With ~$1,500 a month in fixed costs (hosting base, tools, store fees,
-accounting, insurance):
+At launch the fixed costs are about $60 a month: Supabase Pro ($25, the
+database and photos), two small Fly.io machines for the server (~$15),
+Apple's $99 a year, a domain, and email on it; Resend's free tier covers
+the first emails. At scale, budget ~$1,500 a month (hosting, tools,
+accounting, insurance). With that:
 
 - **$50,000 a month before tax takes ~2,000 paying crews** (~$70,000 in
   monthly subscriptions).
@@ -194,6 +201,7 @@ pressure washing.
 | AI cost rises or latency annoys | The model is a setting; cheaper models chosen by eval; fair-use cap |
 | App store rules on subscriptions | Sell plans on the web; iOS in the US storefront (see STORE.md) |
 | One owner, one point of failure | Hosted services, automated tests and deploys, part-time help for support |
+| Personal liability as a sole proprietor | Terms that cap liability; an LLC and business insurance once revenue starts |
 
 ## What's built
 

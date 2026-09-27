@@ -229,6 +229,39 @@ void main() {
     expect(c.warnings, isEmpty);
   });
 
+  test('Supabase for the database and photos', () {
+    final env = {
+      ...production,
+      'DATABASE_URL':
+          'postgresql://postgres.abcdefghijklmnop:s3cret@aws-0-us-east-1.'
+          'pooler.supabase.com:5432/postgres',
+      'STORAGE': 's3',
+      'S3_ENDPOINT':
+          'https://abcdefghijklmnop.storage.supabase.co/storage/v1/s3',
+      'S3_REGION': 'us-east-1',
+      'S3_BUCKET': 'photos',
+      'S3_ACCESS_KEY_ID': 'id',
+      'S3_SECRET_ACCESS_KEY': 'secret',
+      'STRIPE_SECRET_KEY': 'sk_live_x',
+      'STRIPE_WEBHOOK_SECRET': 'whsec_a',
+      'STRIPE_CONNECT_WEBHOOK_SECRET': 'whsec_b',
+      'STRIPE_PRICE_PRO': 'price_pro',
+      'JOBWALK_LEGAL_NAME': 'Jobwalk',
+      'JOBWALK_GOVERNING_LAW': 'Texas',
+    };
+    // Two servers at the default pool size would pass the pooler's 15.
+    expect(ServerConfig.fromEnvironment(env).warnings, [
+      contains('DATABASE_POOL_SIZE (10)'),
+    ]);
+    final c = ServerConfig.fromEnvironment({...env, 'DATABASE_POOL_SIZE': '5'});
+    expect(c.warnings, isEmpty);
+    expect(c.databasePoolSize, 5);
+    expect(c.s3Region, 'us-east-1');
+    final legal = LegalInfo.fromConfig(c);
+    expect(legal.databaseProvider, 'Supabase');
+    expect(legal.storageProvider, 'Supabase');
+  });
+
   test('production refuses unsafe settings, listing every problem', () {
     final found = problems({
       'JOBWALK_ENV': 'production',
@@ -268,6 +301,35 @@ void main() {
       contains(contains('STRIPE_WEBHOOK_SECRET')),
     );
     expect(problems({'ANTHROPIC_API_KEY': 'k', 'STORAGE': 's3'}), hasLength(4));
+    expect(
+      problems({
+        'ANTHROPIC_API_KEY': 'k',
+        'DATABASE_URL':
+            'postgresql://postgres.abcd:[YOUR-PASSWORD]@aws-0-us-east-1.'
+            'pooler.supabase.com:5432/postgres',
+      }),
+      [contains('[YOUR-PASSWORD]')],
+    );
+    expect(
+      problems({
+        'ANTHROPIC_API_KEY': 'k',
+        'DATABASE_URL':
+            'postgresql://postgres.abcd:pw@aws-0-us-east-1.pooler.supabase.com'
+            ':6543/postgres',
+      }),
+      [contains('transaction pooler')],
+    );
+    expect(
+      problems({
+        'ANTHROPIC_API_KEY': 'k',
+        'STORAGE': 's3',
+        'S3_ENDPOINT': 'https://abcd.storage.supabase.co',
+        'S3_BUCKET': 'photos',
+        'S3_ACCESS_KEY_ID': 'id',
+        'S3_SECRET_ACCESS_KEY': 'secret',
+      }),
+      [contains('/storage/v1/s3'), contains('S3_REGION')],
+    );
     expect(
       problems({
         'ANTHROPIC_API_KEY': 'k',

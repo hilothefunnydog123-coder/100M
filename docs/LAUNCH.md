@@ -9,12 +9,13 @@
 
 ## 2. Server
 
-Follow [DEPLOY.md](DEPLOY.md): Postgres, the API image, Resend, an R2 or
-S3 bucket, and optionally Stripe.
+Follow [DEPLOY.md](DEPLOY.md): Supabase for the database and photos, the
+API image, Resend, and optionally Stripe.
 
 - [ ] Domain and HTTPS. Quote links are `JOBWALK_PUBLIC_URL/q/<id>`.
 - [ ] `JOBWALK_ENV=production` and every secret set; `/readyz` is green.
-- [ ] Point-in-time recovery on Postgres; versioning on the photo bucket.
+- [ ] Supabase on Pro before the first real customer: daily backups and
+      no pausing. Add point-in-time recovery once losing a day would hurt.
 - [ ] Alerts on the JSON logs (`error`, `draft_failed`, `overloaded`,
       `job_failed`, `stripe_error`) and on `/metrics`.
 - [ ] A review account for the app stores (`JOBWALK_REVIEW_EMAIL`,
@@ -45,7 +46,10 @@ answers; `store/` has the screenshots and the Play feature graphic.
 - [ ] Store listings: name, description, keywords, screenshots, and the
       App Privacy and Data safety forms (STORE.md). Camera and
       photo-library permission text is already set.
-- [ ] TestFlight and Play internal testing for the beta cohort.
+- [ ] TestFlight and Play internal testing for the beta cohort. With a
+      personal Play account, the beta is also the closed test Google
+      requires: 12 or more testers opted in for 14 days in a row before
+      production access.
 
 ## 4. Getting paid
 

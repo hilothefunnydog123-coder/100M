@@ -16,6 +16,32 @@ void main() {
       expect(latestSchemaVersion, migrations.last.$1);
     });
 
+    test('row level security keeps every role but the owner out', () async {
+      final d = db().db;
+      final open = await d.query('''
+        SELECT c.relname FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = current_schema() AND c.relkind IN ('r', 'p')
+          AND NOT c.relrowsecurity''');
+      expect(open, isEmpty, reason: 'Enable row level security on new tables.');
+
+      // Like Supabase's API roles on older projects: granted, but no policy.
+      await d.execute("INSERT INTO waitlist (email) VALUES ('a@b.co')");
+      final role = 'jobwalk_api_${DateTime.now().microsecondsSinceEpoch}';
+      await d.withConnection((conn) async {
+        await conn.script(
+          'CREATE ROLE $role NOLOGIN; GRANT SELECT ON waitlist TO $role',
+        );
+        try {
+          await conn.script('SET ROLE $role');
+          expect(await conn.query('SELECT * FROM waitlist'), isEmpty);
+        } finally {
+          await conn.script('RESET ROLE; DROP OWNED BY $role; DROP ROLE $role');
+        }
+      });
+      expect(await d.query('SELECT * FROM waitlist'), hasLength(1));
+    });
+
     test('transactions roll back on error and nest', () async {
       final d = db().db;
       await expectLater(
@@ -69,5 +95,6 @@ void main() {
       'require',
     );
     expect(Db.defaultSslMode('db.abcdefgh.supabase.co'), 'require');
+    expect(Db.defaultSslMode('aws-0-us-east-1.pooler.supabase.com'), 'require');
   });
 }

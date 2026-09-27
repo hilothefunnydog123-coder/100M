@@ -2,7 +2,10 @@ import 'database.dart';
 
 /// Schema changes, applied in order and recorded in `schema_migrations`.
 /// Never edit a migration that has shipped; add a new one.
-const migrations = <(int, String, String)>[(1, 'initial schema', _v1)];
+const migrations = <(int, String, String)>[
+  (1, 'initial schema', _v1),
+  (2, 'row level security', _v2),
+];
 
 /// Arbitrary constant for `pg_advisory_lock`, so only one instance migrates
 /// at a time when several start together.
@@ -220,4 +223,25 @@ CREATE TABLE stripe_events (
   type text NOT NULL,
   received_at timestamptz NOT NULL DEFAULT now()
 );
+''';
+
+/// Hosted Postgres like Supabase can publish tables through an HTTP API.
+/// Jobwalk doesn't use one, so row level security with no policies keeps
+/// every other role out. The server owns the tables, so it isn't affected.
+/// New tables need the same line.
+const _v2 = '''
+ALTER TABLE schema_migrations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE businesses ENABLE ROW LEVEL SECURITY;
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE sign_in_codes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE sessions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE quotes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE publications ENABLE ROW LEVEL SECURITY;
+ALTER TABLE quote_events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE photos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE drafts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE jobs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE waitlist ENABLE ROW LEVEL SECURITY;
+ALTER TABLE rate_limits ENABLE ROW LEVEL SECURITY;
+ALTER TABLE stripe_events ENABLE ROW LEVEL SECURITY;
 ''';
