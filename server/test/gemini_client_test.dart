@@ -145,6 +145,30 @@ void main() {
     expect(sleeps, [const Duration(milliseconds: 12500)]);
   });
 
+  test('waits longer between retries when asked to', () async {
+    var calls = 0;
+    final sleeps = <Duration>[];
+    final client = GeminiClient(
+      apiKey: 'k',
+      retryBase: const Duration(seconds: 20),
+      sleep: (d) async => sleeps.add(d),
+      httpClient: MockClient((request) async {
+        calls++;
+        if (calls < 3) {
+          return jsonResponse(
+            503,
+            errorBody(503, 'UNAVAILABLE', 'The model is overloaded.'),
+          );
+        }
+        return jsonResponse(200, okBody);
+      }),
+    );
+    expect((await client.generateContent('m', {})).responseId, 'resp_1');
+    expect(sleeps, hasLength(2));
+    expect(sleeps[0].inMilliseconds, inInclusiveRange(20000, 20250));
+    expect(sleeps[1].inMilliseconds, inInclusiveRange(40000, 40250));
+  });
+
   test('a spent daily quota is not retried', () async {
     var calls = 0;
     final client = GeminiClient(

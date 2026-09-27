@@ -46,7 +46,9 @@ GROQ_API_KEY=... dart run bin/eval.dart --manifest ../eval/jobs.jsonl --provider
 
 Gemini's free tier allows about 20 requests a day for its Flash models; when
 that runs out, the remaining cases fail with a message saying so, and the
-quota resets at midnight Pacific time. `--model gemini-3.5-flash-lite` has a
+quota resets at midnight Pacific time. At busy times it also answers "high
+demand" (503), and those attempts count against the day's requests too, so
+the eval retries Gemini at most three times, 20 seconds and more apart. `--model gemini-3.5-flash-lite` has a
 larger free allowance and a weaker model. On the free tier Google may use
 what you send to improve its products, so keep customers' photos for a key
 with billing turned on.

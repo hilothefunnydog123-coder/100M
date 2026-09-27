@@ -125,6 +125,7 @@ class GeminiClient implements GenerateContentApi {
     http.Client? httpClient,
     Uri? baseUrl,
     this.maxRetries = 2,
+    this.retryBase = const Duration(milliseconds: 500),
     this.timeout = const Duration(seconds: 150),
     Future<void> Function(Duration)? sleep,
   }) : _http = httpClient ?? http.Client(),
@@ -134,6 +135,11 @@ class GeminiClient implements GenerateContentApi {
 
   final String apiKey;
   final int maxRetries;
+
+  /// The first wait when Google doesn't say how long, doubling after that.
+  /// On the free tier every attempt spends one of the day's requests, even
+  /// a "high demand" 503, so callers there should retry less and slower.
+  final Duration retryBase;
   final Duration timeout;
   final http.Client _http;
   final Uri _baseUrl;
@@ -209,7 +215,7 @@ class GeminiClient implements GenerateContentApi {
 
   Duration _backoff(int attempt, Duration? asked) {
     if (asked != null && asked <= const Duration(seconds: 60)) return asked;
-    final base = 500 * pow(2, attempt);
+    final base = retryBase.inMilliseconds * pow(2, attempt);
     return Duration(milliseconds: (base + _random.nextInt(250)).toInt());
   }
 

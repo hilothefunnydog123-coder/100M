@@ -135,8 +135,10 @@ Future<void> main(List<String> argv) async {
       api: GeminiClient(
         apiKey: key,
         baseUrl: base == null ? null : Uri.parse(base),
-        // Wait out per-minute rate limits instead of failing cases.
-        maxRetries: 6,
+        // Each attempt spends one of the free tier's ~20 daily requests,
+        // so ride out "high demand" 503s with a few slow retries.
+        maxRetries: 3,
+        retryBase: const Duration(seconds: 20),
       ),
       config: config,
     );
