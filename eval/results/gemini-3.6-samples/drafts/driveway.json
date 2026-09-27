@@ -1,0 +1,129 @@
+{
+  "draft": {
+    "photos_usable": true,
+    "retake_advice": "",
+    "title": "Driveway and Walkway Cleaning & Sealing",
+    "summary": "Pressure washing of front driveway and entry walkway including target oil spot treatment, with an option to apply penetrating concrete sealer.",
+    "observations": [
+      "Driveway is concrete, approximately two car widths wide, displaying moderate surface dirt and tire tracking.",
+      "A distinct dark oil stain is centered near the middle expansion joint of the driveway.",
+      "Concrete walkway leads from the driveway to the front entry door with light soil and organic buildup."
+    ],
+    "measurements": [
+      {
+        "name": "Driveway Area",
+        "quantity": 630.0,
+        "unit": "sq_ft",
+        "how": "Scaled from standard 16 ft double garage door; driveway is approx 18 ft wide by 35 ft long across 3 concrete panel sections",
+        "confidence": "medium"
+      },
+      {
+        "name": "Front Walkway Area",
+        "quantity": 70.0,
+        "unit": "sq_ft",
+        "how": "Counted 5 standard walkway panel sections approx 3 ft wide by 4 ft long each",
+        "confidence": "medium"
+      }
+    ],
+    "tiers": [
+      {
+        "id": "wash",
+        "name": "Pressure Wash Only",
+        "summary": "Complete pressure washing of driveway and walkway, including targeted oil spot pre-treatment.",
+        "recommended": false
+      },
+      {
+        "id": "wash_seal",
+        "name": "Wash & Seal",
+        "summary": "Pressure wash driveway and walkway, treat oil stain, and apply a penetrating concrete sealer to protect against future stains.",
+        "recommended": true
+      }
+    ],
+    "items": [
+      {
+        "section": "Prep",
+        "description": "Oil stain pre-treatment",
+        "detail": "Apply heavy-duty commercial degreaser to oil stain near center joint, scrub, and allow dwell time prior to washing.",
+        "quantity": 1.0,
+        "unit": "lot",
+        "price_list_id": "",
+        "labor_hours": 0.5,
+        "material_cost": 25.0,
+        "other_cost": 0.0,
+        "tiers": [],
+        "basis": "Single oil spot spot-treatment area visible in center driveway."
+      },
+      {
+        "section": "Pressure Washing",
+        "description": "Pressure wash concrete driveway and walkway",
+        "detail": "Surface clean 700 sq ft of flat concrete surfaces using high-pressure surface cleaner and wand edging.",
+        "quantity": 700.0,
+        "unit": "sq_ft",
+        "price_list_id": "",
+        "labor_hours": 1.5,
+        "material_cost": 15.0,
+        "other_cost": 0.0,
+        "tiers": [],
+        "basis": "Combined surface area of driveway (630 sq ft) and walkway (70 sq ft)."
+      },
+      {
+        "section": "Sealing",
+        "description": "Apply penetrating silane/siloxane sealer",
+        "detail": "Apply commercial penetrating water and oil repellent sealer to dry concrete surface to prevent future staining.",
+        "quantity": 700.0,
+        "unit": "sq_ft",
+        "price_list_id": "",
+        "labor_hours": 1.5,
+        "material_cost": 150.0,
+        "other_cost": 0.0,
+        "tiers": [
+          "wash_seal"
+        ],
+        "basis": "Coverage for 700 sq ft concrete surface requiring approximately 4 gallons of sealer."
+      }
+    ],
+    "assumptions": [
+      {
+        "text": "An operational exterior hose bib with adequate water supply is accessible on site.",
+        "impact": "high"
+      },
+      {
+        "text": "Oil stain pre-treatment will significantly lighten stain, but total 100% removal on aged porous concrete cannot be guaranteed.",
+        "impact": "high"
+      },
+      {
+        "text": "Sealer application requires a 24-hour dry period post-washing before application.",
+        "impact": "medium"
+      }
+    ],
+    "exclusions": [
+      "Concrete cracking or spalling structural repairs",
+      "House exterior siding, roof, or garage door pressure washing",
+      "Street curb or apron cleaning beyond driveway boundary"
+    ],
+    "crew": {
+      "people": 1,
+      "days": 0.5
+    },
+    "customer_message": "Thank you for reaching out. We have prepared an estimate to pressure wash your driveway and walkway, including special pre-treatment for the oil stain near the center. We also included a recommended option to seal the concrete afterward to protect against future oil drips and weathering.",
+    "confidence": "high",
+    "confidence_note": "Scope and measurements are clearly defined from photo references."
+  },
+  "model": "gemini-3.6-flash",
+  "demo": false,
+  "prompt_version": "2026-09-25.1",
+  "stats": {
+    "attempts": 1,
+    "refusals": 0,
+    "malformed": 0,
+    "input_tokens": 4314,
+    "output_tokens": 3381,
+    "cache_read_tokens": 0,
+    "cache_write_tokens": 0,
+    "models": [
+      "gemini-3.6-flash"
+    ],
+    "latency_ms": 48471,
+    "estimated_cost_usd": null
+  }
+}

@@ -1,0 +1,15 @@
+## Run 1 (2026-09-27 19:25 UTC, gemini-3.6-flash on the free tier)
+fence: failed: DraftFailed: The model request failed. (GeminiApiException(503 UNAVAILABLE: This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.))
+living-room: failed: DraftFailed: The model request failed. (GeminiApiException(503 UNAVAILABLE: This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.))
+driveway: $458.00 (3 lines, 3.5 h)
+| Metric | Value |
+|---|---|
+| Cases | 3 (0 scored, 0 unusable, 2 failed) |
+| Median abs. error of total | n/a |
+| Median bias (+ is high) | n/a |
+| Within 10% | n/a |
+| Within 20% | n/a |
+| Mean cost per draft | n/a |
+| Latency p50 / p90 | 165924 ms / 167237 ms |
+
+The driveway drafted on the first try (Pressure Wash Only $200, Wash & Seal $458 at default rates); the fence and living room got 503 (high demand) on every attempt.
