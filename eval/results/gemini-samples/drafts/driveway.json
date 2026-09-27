@@ -1,0 +1,149 @@
+{
+  "draft": {
+    "photos_usable": true,
+    "retake_advice": "",
+    "title": "Driveway & Walkway Pressure Washing & Sealing",
+    "summary": "Deep surface cleaning and oil stain treatment for the concrete driveway and front walkway, with an option to apply a commercial penetrating sealer.",
+    "observations": [
+      "Two-car concrete driveway with standard control joints showing tire tracking, surface grime, and organic discoloration along edges.",
+      "Prominent circular motor oil or automotive fluid stain approximately 3 feet in diameter centered over the control joint near the garage apron.",
+      "Straight concrete front entry walkway connects toward the driveway/entry with mild surface soiling.",
+      "Turf and shrubs border the driveway and walkway, requiring low-pressure rinse protection and plant-safe detergents."
+    ],
+    "measurements": [
+      {
+        "name": "Driveway Surface Area",
+        "quantity": 650.0,
+        "unit": "sq_ft",
+        "how": "Scaled from 16-foot two-car garage door width (approx. 18 ft driveway width) by 3 standard joint bays (approx. 36 ft length)",
+        "confidence": "medium"
+      },
+      {
+        "name": "Front Walkway Surface Area",
+        "quantity": 70.0,
+        "unit": "sq_ft",
+        "how": "Estimated 3.5 ft width scaled against 36 in entry door by approx. 20 ft length",
+        "confidence": "medium"
+      },
+      {
+        "name": "Total Flatwork Area",
+        "quantity": 720.0,
+        "unit": "sq_ft",
+        "how": "Sum of driveway (650 sq ft) and front walkway (70 sq ft)",
+        "confidence": "medium"
+      },
+      {
+        "name": "Oil Stain Area",
+        "quantity": 1.0,
+        "unit": "lot",
+        "how": "Visual estimation centered on joint near garage door, approx. 3 ft diameter spot",
+        "confidence": "high"
+      }
+    ],
+    "tiers": [
+      {
+        "id": "clean",
+        "name": "Clean & Degrease",
+        "summary": "Deep surface cleaning of driveway and walkway, plus targeted chemical degreasing of the center oil stain.",
+        "recommended": false
+      },
+      {
+        "id": "seal",
+        "name": "Clean, Degrease & Seal",
+        "summary": "Full pressure wash and oil treatment followed by a commercial penetrating silane/siloxane sealer to prevent future stains.",
+        "recommended": true
+      }
+    ],
+    "items": [
+      {
+        "section": "Pre-Treatment",
+        "description": "Heavy oil stain degreaser and spot extraction",
+        "detail": "Apply commercial concrete oil emulsifier/degreaser to garage apron oil spot, allow dwell time, agitate with stiff brush, and extract to pull embedded oils prior to surface washing.",
+        "quantity": 1.0,
+        "unit": "lot",
+        "price_list_id": "",
+        "labor_hours": 0.75,
+        "material_cost": 28.0,
+        "other_cost": 0.0,
+        "tiers": [],
+        "basis": "1 prominent oil stain approx. 3 ft diameter"
+      },
+      {
+        "section": "Pressure Washing",
+        "description": "Surface clean driveway and front walkway",
+        "detail": "Pre-treat concrete with biodegradable detergent, surface clean 720 sq ft flatwork using rotary surface cleaner, detail edges and expansion joints with wand, and thoroughly rinse slurry away from lawn and beds.",
+        "quantity": 720.0,
+        "unit": "sq_ft",
+        "price_list_id": "",
+        "labor_hours": 2.25,
+        "material_cost": 22.0,
+        "other_cost": 0.0,
+        "tiers": [],
+        "basis": "650 sq ft driveway plus 70 sq ft walkway"
+      },
+      {
+        "section": "Protection & Sealing",
+        "description": "Penetrating silane/siloxane concrete sealer application",
+        "detail": "After concrete is completely dry, apply commercial-grade penetrating silane/siloxane sealer with low-pressure sprayer and back-roll to provide deep water-repellent and oil-resistant protection without altering slip resistance.",
+        "quantity": 720.0,
+        "unit": "sq_ft",
+        "price_list_id": "",
+        "labor_hours": 2.0,
+        "material_cost": 150.0,
+        "other_cost": 0.0,
+        "tiers": [
+          "seal"
+        ],
+        "basis": "720 sq ft driveway and walkway area at ~180-200 sq ft/gal coverage (approx. 4 gal)"
+      }
+    ],
+    "assumptions": [
+      {
+        "text": "Exterior water spigot with adequate municipal flow (at least 4 GPM) is functioning and accessible on site.",
+        "impact": "high"
+      },
+      {
+        "text": "Sealing option requires concrete to dry thoroughly (typically 24 hours of dry weather after wash) prior to sealer application.",
+        "impact": "medium"
+      },
+      {
+        "text": "Aged motor oil stains can leave a residual ghosting shadow in porous concrete even after successful extraction and degreasing.",
+        "impact": "medium"
+      },
+      {
+        "text": "Driveway will be fully cleared of vehicles and equipment prior to crew arrival.",
+        "impact": "low"
+      }
+    ],
+    "exclusions": [
+      "Public city sidewalk and street curb washing.",
+      "Concrete expansion joint caulking, mastic replacement, or crack repair.",
+      "Guaranteed 100% removal of permanent deep oil shadow or chemical etching.",
+      "House siding, garage door, or gutter cleaning."
+    ],
+    "crew": {
+      "people": 1,
+      "days": 1.0
+    },
+    "customer_message": "Thanks for considering us for your driveway and walkway cleaning. We have prepared two options for you: a deep clean with dedicated degreasing on the center oil stain, and a wash-and-seal option that adds a penetrating barrier to guard against future stains and weather wear. Let us know which scope works best for you.",
+    "confidence": "medium",
+    "confidence_note": "Dimensions are scaled reliably from the standard 16-foot two-car garage opening and slab joints, but field verification of oil stain depth and water supply is recommended."
+  },
+  "model": "gemini-3.8-flash",
+  "demo": false,
+  "prompt_version": "2026-09-25.1",
+  "stats": {
+    "attempts": 1,
+    "refusals": 0,
+    "malformed": 0,
+    "input_tokens": 4314,
+    "output_tokens": 6037,
+    "cache_read_tokens": 0,
+    "cache_write_tokens": 0,
+    "models": [
+      "gemini-3.8-flash"
+    ],
+    "latency_ms": 29071,
+    "estimated_cost_usd": 0.02587425
+  }
+}

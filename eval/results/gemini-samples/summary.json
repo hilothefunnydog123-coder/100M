@@ -1,0 +1,34 @@
+{
+  "prompt_version": "2026-09-25.1",
+  "provider": "gemini",
+  "model": "gemini-3.8-flash",
+  "effort": "high",
+  "cases": 3,
+  "scored": 0,
+  "failed": 3,
+  "unusable": 0,
+  "median_abs_error_pct": null,
+  "median_bias_pct": null,
+  "within_10_pct": null,
+  "within_20_pct": null,
+  "mean_cost_usd": null,
+  "latency_p50_ms": 3633,
+  "latency_p90_ms": 60029,
+  "by_trade": {
+    "pressure_washing": {
+      "cases": 1,
+      "median_abs_error_pct": null,
+      "within_20_pct": null
+    },
+    "fencing": {
+      "cases": 1,
+      "median_abs_error_pct": null,
+      "within_20_pct": null
+    },
+    "painting": {
+      "cases": 1,
+      "median_abs_error_pct": null,
+      "within_20_pct": null
+    }
+  }
+}

@@ -1,0 +1,39 @@
+## Run 1
+fence: failed: DraftFailed: The model request failed. (GeminiApiException(503 UNAVAILABLE: This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.))
+living-room: failed: DraftFailed: The model request failed. (GeminiApiException(503 UNAVAILABLE: This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.))
+driveway: $567.00 (3 lines, 5.0 h)
+
+| Metric | Value |
+|---|---|
+| Cases | 3 (0 scored, 0 unusable, 2 failed) |
+| Median abs. error of total | n/a |
+| Median bias (+ is high) | n/a |
+| Within 10% | n/a |
+| Within 20% | n/a |
+| Mean cost per draft | $0.026 |
+| Latency p50 / p90 | 88157 ms / 93159 ms |
+
+
+## Run 2 (retry after run 1's 503s; overwrote results.jsonl/summary.*, drafts/driveway.json is from run 1)
+fence: failed: DraftFailed: Gemini's daily limit for this model is used up. It resets at midnight Pacific time. (GeminiApiException(429 RESOURCE_EXHAUSTED: You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. 
+* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.8-flash
+Please retry in 17.280523575s.))
+living-room: failed: DraftFailed: Gemini's daily limit for this model is used up. It resets at midnight Pacific time. (GeminiApiException(429 RESOURCE_EXHAUSTED: You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. 
+* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.8-flash
+Please retry in 13.637222096s.))
+driveway: failed: DraftFailed: Gemini's daily limit for this model is used up. It resets at midnight Pacific time. (GeminiApiException(429 RESOURCE_EXHAUSTED: You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. 
+* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.8-flash
+Please retry in 12.528255131s.))
+
+| Metric | Value |
+|---|---|
+| Cases | 3 (0 scored, 0 unusable, 3 failed) |
+| Median abs. error of total | n/a |
+| Median bias (+ is high) | n/a |
+| Within 10% | n/a |
+| Within 20% | n/a |
+| Mean cost per draft | n/a |
+| Latency p50 / p90 | 3633 ms / 60029 ms |
+
+
+Note: no wire-format fix needed (driveway drafted OK in run 1). Run 1 failures were 503 UNAVAILABLE (model overloaded); run 2 hit the free-tier daily quota (20 requests/day for gemini-3.8-flash), so the run stopped there.
