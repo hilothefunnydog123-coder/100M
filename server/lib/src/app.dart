@@ -14,6 +14,7 @@ import 'integrations/email.dart';
 import 'integrations/object_store.dart';
 import 'integrations/stripe.dart';
 import 'jobs.dart';
+import 'legal.dart';
 import 'limits.dart';
 import 'metrics.dart';
 import 'services/accounts.dart';
@@ -220,6 +221,7 @@ class JobwalkApp {
       metrics: metrics,
       model: config.draftModel,
       version: serverVersion,
+      legal: LegalInfo.fromConfig(config),
       metricsToken: config.metricsToken,
       exposeMetrics: !config.isProduction,
       trustedProxies: config.trustedProxies,

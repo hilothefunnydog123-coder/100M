@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../services/api.dart';
+import '../../services/launcher.dart';
+import '../../state/providers.dart';
 import '../../state/session.dart';
 import '../../theme/colors.dart';
 import '../widgets/common.dart';
@@ -117,6 +119,28 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                   FilledButton(
                     onPressed: _emailOk && !_busy ? _sendCode : null,
                     child: Text(_busy ? 'Sending…' : 'Email me a code'),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'By continuing, you agree to the terms of service and '
+                    'the privacy policy.',
+                    textAlign: TextAlign.center,
+                    style: text.bodySmall,
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      TextButton(
+                        onPressed: () =>
+                            openLink(ref.read(configProvider).termsUrl),
+                        child: const Text('Terms'),
+                      ),
+                      TextButton(
+                        onPressed: () =>
+                            openLink(ref.read(configProvider).privacyPolicyUrl),
+                        child: const Text('Privacy'),
+                      ),
+                    ],
                   ),
                 ] else ...[
                   TextField(

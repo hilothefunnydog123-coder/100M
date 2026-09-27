@@ -20,6 +20,7 @@ export 'src/integrations/email.dart';
 export 'src/integrations/object_store.dart';
 export 'src/integrations/stripe.dart';
 export 'src/jobs.dart';
+export 'src/legal.dart';
 export 'src/limits.dart';
 export 'src/metrics.dart';
 export 'src/model_api.dart';

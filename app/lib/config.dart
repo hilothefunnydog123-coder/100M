@@ -23,9 +23,26 @@ class AppConfig {
   factory AppConfig.fromEnvironment() {
     const base = String.fromEnvironment('API_BASE_URL');
     const demo = bool.fromEnvironment('DEMO_MODE');
+    return AppConfig.forServer(
+      base.isEmpty ? null : Uri.parse(base),
+      demo: demo,
+    );
+  }
+
+  /// Talks to [api], which also hosts the privacy policy and terms this
+  /// app links to. Without one, demo mode.
+  factory AppConfig.forServer(Uri? api, {bool demo = false}) {
+    String page(String name, String fallback) {
+      if (api == null) return fallback;
+      final prefix = api.path.replaceAll(RegExp(r'/+$'), '');
+      return api.replace(path: '$prefix/$name').toString();
+    }
+
     return AppConfig(
-      apiBaseUrl: base.isEmpty ? null : Uri.parse(base),
-      demoMode: demo || base.isEmpty,
+      apiBaseUrl: api,
+      demoMode: demo || api == null,
+      privacyPolicyUrl: page('privacy', 'https://jobwalk.app/privacy'),
+      termsUrl: page('terms', 'https://jobwalk.app/terms'),
     );
   }
 }

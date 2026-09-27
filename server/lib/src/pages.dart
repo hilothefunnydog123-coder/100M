@@ -45,7 +45,8 @@ input:focus,select:focus,textarea:focus,.btn:focus-visible,summary:focus-visible
 outline:3px solid var(--accent);outline-offset:2px}
 ''';
 
-String _page({
+/// A complete page with the shared base styles.
+String htmlPage({
   required String title,
   required String body,
   String css = '',
@@ -69,19 +70,20 @@ $body
 ''';
 
 /// A plain page for errors and confirmations.
-String messagePage(String title, String message, {String? homeHref}) => _page(
-  title: title,
-  css: '''
+String messagePage(String title, String message, {String? homeHref}) =>
+    htmlPage(
+      title: title,
+      css: '''
 .msg{max-width:520px;margin:12vh auto;padding:0 20px;text-align:center}
 .msg h1{font-size:28px;margin-bottom:12px}.msg p{color:var(--muted)}''',
-  body:
-      '''
+      body:
+          '''
 <main class="msg">
 <h1>${esc(title)}</h1>
 <p>${esc(message)}</p>
 ${homeHref == null ? '' : '<p><a href="${esc(homeHref)}">Jobwalk</a></p>'}
 </main>''',
-);
+    );
 
 // ---------------------------------------------------------------------------
 // Customer quote page
@@ -135,6 +137,7 @@ ul.plain{margin:0;padding-left:20px;color:var(--muted)}
 .approve label.f{display:block;font-weight:700;margin:0 0 6px}
 .agree{display:flex;gap:10px;align-items:flex-start;margin:14px 0 18px;color:var(--muted);font-size:15px}
 .agree input{width:20px;height:20px;margin-top:2px;flex:none}
+.sign{color:var(--faint);font-size:13px;margin:-8px 0 16px}
 .approve .btn{display:none;width:100%}
 .single .approve .btn{display:block}
 details.decline{margin-top:18px;color:var(--muted)}
@@ -327,7 +330,9 @@ String quotePage(
       'autocomplete="name" required value="${esc(q.customerName)}">'
       '<label class="agree"><input type="checkbox" name="agree" value="yes" '
       'required><span>I approve this quote and its terms'
-      '${q.depositPct > 0 ? ', and I understand a deposit is due to schedule the work' : ''}.</span></label>',
+      '${q.depositPct > 0 ? ', and I understand a deposit is due to schedule the work' : ''}.</span></label>'
+      '<p class="sign">Typing your name and approving signs this quote '
+      'electronically.</p>',
     );
     for (var i = 0; i < options.length; i++) {
       final o = options[i];
@@ -353,14 +358,15 @@ String quotePage(
   b.writeln('</main>');
   b.writeln(
     '<p class="foot">Sent with <a href="${esc(homeHref)}">Jobwalk</a>, '
-    'the fastest way for crews to quote.</p></div>',
+    'the fastest way for crews to quote. '
+    '<a href="/privacy">Privacy</a> · <a href="/terms">Terms</a></p></div>',
   );
 
   final optionsLine = q.options.length == 1
       ? Money.format(q.options.single.totalCents)
       : '${q.options.length} options from '
             '${Money.format(q.options.map((o) => o.totalCents).reduce((a, b) => a < b ? a : b))}';
-  return _page(
+  return htmlPage(
     title: 'Quote #${q.number} from ${q.business.name}',
     description: [if (q.title.isNotEmpty) q.title, optionsLine].join(' · '),
     css: css.toString(),
@@ -501,7 +507,7 @@ String landingPage({bool joined = false, String? error}) {
     for (final t in Trade.values)
       '<option value="${esc(t.id)}">${esc(t.label)}</option>',
   ].join();
-  return _page(
+  return htmlPage(
     title: 'Jobwalk: quote the job before you leave the driveway',
     description:
         'Snap a few photos and Jobwalk writes an itemized quote with your '
@@ -609,11 +615,12 @@ fencing, pressure washing, landscaping, decks, gutters, drywall, flooring,
 handyman work, and more. If you quote from a walkthrough, it fits.</p></details>
 <details><summary>Do my customers need an app?</summary><p>No. They get a
 link by text or email that opens in any browser.</p></details>
-<details><summary>How do deposits work?</summary><p>Add your Stripe,
-Square, or PayPal payment link, and customers see a button to pay the
-deposit right after they approve.</p></details>
+<details><summary>How do deposits work?</summary><p>Customers pay the
+deposit by card right after they approve, and it goes to your own Stripe
+account. Rather use your Square or PayPal link? Add it in Settings and
+customers see that instead.</p></details>
 </section>
-<footer>© 2026 Jobwalk</footer>
+<footer>© 2026 Jobwalk · <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a></footer>
 ''',
   );
 }

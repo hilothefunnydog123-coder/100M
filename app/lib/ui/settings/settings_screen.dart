@@ -243,6 +243,10 @@ class SettingsScreen extends ConsumerWidget {
                 title: 'Privacy policy',
                 onTap: () => openLink(config.privacyPolicyUrl),
               ),
+              _Row(
+                title: 'Terms of service',
+                onTap: () => openLink(config.termsUrl),
+              ),
               if (!signedIn)
                 _Row(
                   title: 'Erase all data',

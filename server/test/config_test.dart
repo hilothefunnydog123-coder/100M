@@ -147,6 +147,33 @@ void main() {
     );
   });
 
+  test('legal details for the privacy policy and terms', () {
+    final c = ServerConfig.fromEnvironment({
+      ...production,
+      'JOBWALK_LEGAL_NAME': 'Brightline Software LLC',
+      'JOBWALK_LEGAL_ADDRESS': '12 Elm St, Austin, TX 78704',
+      'JOBWALK_GOVERNING_LAW': 'Texas',
+      'EMAIL_FROM': 'Jobwalk <team@brightline.test>',
+    });
+    expect(c.legalName, 'Brightline Software LLC');
+    expect(c.legalAddress, '12 Elm St, Austin, TX 78704');
+    expect(c.governingLaw, 'Texas');
+    expect(c.contactEmail, 'team@brightline.test');
+    expect(c.warnings.join('\n'), isNot(contains('JOBWALK_LEGAL_NAME')));
+
+    final unnamed = ServerConfig.fromEnvironment(production);
+    expect(unnamed.legalName, 'Jobwalk');
+    expect(unnamed.warnings.join('\n'), contains('JOBWALK_LEGAL_NAME'));
+    expect(
+      ServerConfig.fromEnvironment({
+        ...production,
+        'EMAIL_REPLY_TO': 'help@brightline.test',
+        'JOBWALK_CONTACT_EMAIL': 'legal@brightline.test',
+      }).contactEmail,
+      'legal@brightline.test',
+    );
+  });
+
   test('ignores generic variables set by other tools', () {
     final c = ServerConfig.fromEnvironment({
       'ANTHROPIC_API_KEY': 'k',
@@ -172,6 +199,8 @@ void main() {
       'JOBWALK_CORS_ORIGINS': 'https://a.example, https://b.example',
       'JOBWALK_EFFORT': 'medium',
       'PORT': '9000',
+      'JOBWALK_LEGAL_NAME': 'Jobwalk Inc.',
+      'JOBWALK_GOVERNING_LAW': 'Texas',
     });
     expect(c.isProduction, isTrue);
     expect(c.publicUrl.toString(), 'https://jobwalk.app');

@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:jobwalk/config.dart';
 import 'package:jobwalk/services/api.dart';
 import 'package:jobwalk/services/server.dart';
 import 'package:jobwalk_core/jobwalk_core.dart';
@@ -26,6 +27,22 @@ http.Response json(int status, Object body) => http.Response(
 );
 
 void main() {
+  test('the server that syncs quotes hosts the legal pages', () {
+    final config = AppConfig.forServer(Uri.parse('https://api.jobwalk.test'));
+    expect(config.demoMode, isFalse);
+    expect(config.privacyPolicyUrl, 'https://api.jobwalk.test/privacy');
+    expect(config.termsUrl, 'https://api.jobwalk.test/terms');
+    expect(
+      AppConfig.forServer(
+        Uri.parse('https://example.test/jobwalk/'),
+      ).privacyPolicyUrl,
+      'https://example.test/jobwalk/privacy',
+    );
+    final demo = AppConfig.forServer(null);
+    expect(demo.demoMode, isTrue);
+    expect(demo.termsUrl, 'https://jobwalk.app/terms');
+  });
+
   final requests = <http.Request>[];
   var unauthorized = 0;
   String? token = 'jws_token';

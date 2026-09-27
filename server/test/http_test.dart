@@ -477,10 +477,34 @@ void main() {
     });
 
     group('site', () {
+      test('privacy and terms describe this deployment', () async {
+        final privacy = await h.send('GET', '/privacy');
+        expect(privacy.statusCode, 200);
+        expect(privacy.headers['cache-control'], contains('public'));
+        final p = await privacy.readAsString();
+        expect(p, contains('<h1>Privacy policy</h1>'));
+        expect(p, contains('to Anthropic, which runs the Claude'));
+        expect(p, contains('<b>Stripe</b>'));
+        expect(p, isNot(contains('Resend')), reason: 'emails are logged');
+        expect(p, contains('90 days without use'));
+
+        final terms = await (await h.send('GET', '/terms')).readAsString();
+        expect(terms, contains('25 free AI drafts'));
+        expect(terms, contains('up to 500 AI drafts a month'));
+        expect(
+          terms,
+          contains('platform fee of\n1% plus card processing of 2.9% + 30¢'),
+        );
+        expect(terms, contains('the state where Jobwalk is organized'));
+      });
+
       test('landing page and waitlist', () async {
         final landing = await h.send('GET', '/');
         expect(landing.statusCode, 200);
-        expect(await landing.readAsString(), contains('Jobwalk'));
+        final html = await landing.readAsString();
+        expect(html, contains('Jobwalk'));
+        expect(html, contains('href="/privacy"'));
+        expect(html, contains('href="/terms"'));
 
         final joined = await h.form('/waitlist', {
           'email': ' Pat@Example.com ',

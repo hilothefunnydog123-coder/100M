@@ -31,12 +31,15 @@ S3 bucket, and optionally Stripe.
 - [ ] Give app reviewers the review account (`JOBWALK_REVIEW_EMAIL` and
       its fixed code); sign-in is by emailed code only.
 - [ ] Android release signing; Apple team and provisioning.
-- [ ] Privacy policy and terms at the URLs in `app/lib/config.dart`. The
-      policy should say: job photos are sent to Anthropic's API to draft
-      the quote and are stored in the business's account so the whole crew
-      sees them; quotes, photos, and customer responses are deleted with the
-      quote or the account; approvals keep an audit record (name, time, IP
-      address, browser) for the contractor.
+- [ ] Privacy policy and terms: the server hosts them at `/privacy` and
+      `/terms`, filled in from its own configuration (the AI provider,
+      email, storage, and Stripe it uses, the fees, and the trial), and the
+      app links to them on the server it's built against. Set
+      `JOBWALK_LEGAL_NAME`, `JOBWALK_GOVERNING_LAW`,
+      `JOBWALK_LEGAL_ADDRESS`, and `JOBWALK_CONTACT_EMAIL`, read both pages
+      on the production URL, and have a lawyer review them before launch.
+      With Gemini, the policy says the paid API is used: the key's Google
+      Cloud project needs billing turned on.
 - [ ] Store listings: screenshots of the capture, quote, and customer
       pages. Camera and photo-library permission text is already set.
 - [ ] TestFlight and Play internal testing for the beta cohort.

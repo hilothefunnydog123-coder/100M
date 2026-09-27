@@ -71,6 +71,10 @@ class ServerConfig {
     this.sessionDays = 90,
     this.reviewEmail,
     this.reviewCode,
+    this.legalName = 'Jobwalk',
+    this.contactEmail = 'hello@jobwalk.app',
+    this.legalAddress = '',
+    this.governingLaw = '',
     this.warnings = const [],
   });
 
@@ -177,6 +181,14 @@ class ServerConfig {
   final int sessionDays;
   final String? reviewEmail;
   final String? reviewCode;
+
+  /// Who runs this server, for the privacy policy and terms at /privacy
+  /// and /terms: the company's legal name, where to reach it, its mailing
+  /// address, and the state whose laws govern the terms.
+  final String legalName;
+  final String contactEmail;
+  final String legalAddress;
+  final String governingLaw;
 
   /// Settings that work but deserve a look, printed at startup.
   final List<String> warnings;
@@ -391,6 +403,20 @@ class ServerConfig {
       problems.add('JOBWALK_REVIEW_CODE must be six digits.');
     }
 
+    final legalName = str('JOBWALK_LEGAL_NAME');
+    final governingLaw = str('JOBWALK_GOVERNING_LAW');
+    if (production && (legalName == null || governingLaw == null)) {
+      warnings.add(
+        'Set JOBWALK_LEGAL_NAME and JOBWALK_GOVERNING_LAW: the privacy '
+        'policy and terms name the company and the governing law.',
+      );
+    }
+    final contactEmail =
+        str('JOBWALK_CONTACT_EMAIL') ??
+        str('EMAIL_REPLY_TO') ??
+        RegExp(r'[^<\s]+@[^>\s]+').firstMatch(str('EMAIL_FROM') ?? '')?[0] ??
+        'hello@jobwalk.app';
+
     final adminToken = str('ADMIN_TOKEN');
     if (adminToken != null && adminToken.length < 24) {
       problems.add('ADMIN_TOKEN must be at least 24 characters.');
@@ -475,6 +501,10 @@ class ServerConfig {
       sessionDays: intVar('JOBWALK_SESSION_DAYS', 90, min: 1, max: 400),
       reviewEmail: reviewEmail?.toLowerCase(),
       reviewCode: reviewCode,
+      legalName: legalName ?? 'Jobwalk',
+      contactEmail: contactEmail,
+      legalAddress: str('JOBWALK_LEGAL_ADDRESS') ?? '',
+      governingLaw: governingLaw ?? '',
       warnings: warnings,
     );
     if (problems.isNotEmpty) throw ConfigError(problems);

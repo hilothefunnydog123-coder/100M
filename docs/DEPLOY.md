@@ -69,6 +69,8 @@ configuration and prints every problem at once (exit code 78).
 | `ADMIN_TOKEN` | | 24+ characters. Enables `/admin/*`. |
 | `METRICS_TOKEN` | | Bearer token for `/metrics`. Without it, `/metrics` is off in production. |
 | `JOBWALK_REVIEW_EMAIL`, `JOBWALK_REVIEW_CODE` | | An account that signs in with a fixed six-digit code, for app store review. |
+| `JOBWALK_LEGAL_NAME`, `JOBWALK_LEGAL_ADDRESS`, `JOBWALK_GOVERNING_LAW` | `Jobwalk`, none, none | Who runs the service, for the privacy policy and terms at `/privacy` and `/terms`. The governing law is a US state, e.g. `Texas`. |
+| `JOBWALK_CONTACT_EMAIL` | `EMAIL_REPLY_TO`, else the `EMAIL_FROM` address | Where the legal pages send privacy and data requests. |
 
 ### AI provider
 

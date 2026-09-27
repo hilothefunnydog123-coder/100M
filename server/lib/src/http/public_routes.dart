@@ -8,6 +8,7 @@ import '../common.dart';
 import '../db/database.dart';
 import '../db/migrations.dart';
 import '../integrations/stripe.dart' show constantTimeEquals;
+import '../legal.dart';
 import '../limits.dart';
 import '../metrics.dart';
 import '../pages.dart';
@@ -27,6 +28,7 @@ class PublicRoutes {
     required this.metrics,
     required this.model,
     required this.version,
+    this.legal = const LegalInfo(),
     this.metricsToken,
     this.exposeMetrics = false,
     this.trustedProxies = 1,
@@ -49,6 +51,9 @@ class PublicRoutes {
   final String model;
   final String version;
 
+  /// Who runs this server, for /privacy and /terms.
+  final LegalInfo legal;
+
   /// With a token, /metrics needs `Authorization: Bearer <token>`.
   final String? metricsToken;
 
@@ -64,6 +69,8 @@ class PublicRoutes {
   Router get router => Router()
     ..get('/', _landing)
     ..get('/sample', _sample)
+    ..get('/privacy', _privacy)
+    ..get('/terms', _terms)
     ..post('/waitlist', _waitlist)
     ..get('/robots.txt', _robots)
     ..get('/q/<id>', _quote)
@@ -117,6 +124,18 @@ class PublicRoutes {
     200,
     landingPage(joined: r.url.queryParameters['joined'] == '1'),
     headers: {'cache-control': 'public, max-age=300'},
+  );
+
+  Response _privacy(Request r) => htmlResponse(
+    200,
+    privacyPage(legal),
+    headers: {'cache-control': 'public, max-age=3600'},
+  );
+
+  Response _terms(Request r) => htmlResponse(
+    200,
+    termsPage(legal),
+    headers: {'cache-control': 'public, max-age=3600'},
   );
 
   Response _sample(Request r) {
