@@ -62,7 +62,34 @@ class _LineEditorState extends State<_LineEditor> {
   var _costsTyped = false;
   var _dropOverride = false;
 
+  /// A price list entry picked for a new line: its name, unit, and rate.
+  PriceEntry? _entry;
+
   Rates get _rates => widget.quote.rates;
+
+  /// The most recently used entries first; a long list stays one glance.
+  List<PriceEntry> get _suggestions {
+    final entries = [..._rates.priceList]
+      ..sort((a, b) {
+        final at = a.updatedAt, bt = b.updatedAt;
+        if (at == null || bt == null) return at == null ? 1 : -1;
+        return bt.compareTo(at);
+      });
+    return entries.take(12).toList();
+  }
+
+  void _pick(PriceEntry entry) => setState(() {
+    if (_entry?.id == entry.id) {
+      _entry = null;
+      return;
+    }
+    _entry = entry;
+    _description.text = entry.name;
+    _unit = entry.unit;
+    _priceTyped = false;
+    _price.clear();
+    _costsTyped = false;
+  });
 
   @override
   void dispose() {
@@ -90,6 +117,9 @@ class _LineEditorState extends State<_LineEditor> {
       unit: _unit,
       tierIds: _tiers.length == widget.quote.tiers.length ? const {} : _tiers,
     );
+    if (_entry case final entry?) {
+      item = item.withUnitPrice(entry.unitPriceCents, priceListId: entry.id);
+    }
     if (_dropOverride) item = item.withoutOverride();
     final q = parseNumber(_quantity.text);
     if (q != null && q > 0 && q != _base.quantity) item = item.withQuantity(q);
@@ -171,9 +201,33 @@ class _LineEditorState extends State<_LineEditor> {
               shrinkWrap: true,
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
               children: [
+                if (isNew && _rates.priceList.isNotEmpty) ...[
+                  Text('From your price list', style: text.titleSmall),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: [
+                      for (final e in _suggestions)
+                        ChoiceChip(
+                          label: Text(
+                            '${e.name} · '
+                            '${Money.format(e.unitPriceCents, cents: true)}/'
+                            '${e.unit.isLumpSum ? 'job' : e.unit.singular}',
+                          ),
+                          selected: _entry?.id == e.id,
+                          labelStyle: text.labelMedium?.copyWith(
+                            color: _entry?.id == e.id ? c.canvas : c.ink,
+                          ),
+                          onSelected: (_) => _pick(e),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                ],
                 TextField(
                   controller: _description,
-                  autofocus: isNew,
+                  autofocus: isNew && _rates.priceList.isEmpty,
                   textCapitalization: TextCapitalization.sentences,
                   decoration: const InputDecoration(labelText: 'What'),
                   onChanged: (_) => setState(() {}),
@@ -206,6 +260,8 @@ class _LineEditorState extends State<_LineEditor> {
                     const SizedBox(width: 10),
                     Expanded(
                       child: DropdownButtonFormField<Unit>(
+                        // Rebuilt when a price list pick changes the unit.
+                        key: ValueKey(_unit),
                         isExpanded: true,
                         initialValue: _unit,
                         decoration: const InputDecoration(labelText: 'Unit'),
@@ -219,7 +275,11 @@ class _LineEditorState extends State<_LineEditor> {
                               ),
                             ),
                         ],
-                        onChanged: (u) => setState(() => _unit = u ?? _unit),
+                        onChanged: (u) => setState(() {
+                          _unit = u ?? _unit;
+                          // The entry's rate is per its own unit.
+                          if (_entry?.unit != _unit) _entry = null;
+                        }),
                       ),
                     ),
                   ],

@@ -111,7 +111,7 @@ class _AccountSettings extends ConsumerWidget {
     }
     final left = plan.trialDraftsLeft ?? 0;
     return '$left of ${plan.trialDraftsIncluded} free AI drafts left. Quotes '
-        'you build by hand are always free.';
+        'you write yourself are always free.';
   }
 
   Widget _paymentsRow(

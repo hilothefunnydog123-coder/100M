@@ -400,8 +400,8 @@ class _EmptyState extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Text(
-            'On your next walkthrough, tap New quote and snap the job. No '
-            'job handy? Try one of these:',
+            'On your next walkthrough, tap New quote and snap the job, or '
+            'write one yourself. No job handy? Try one of these:',
             textAlign: TextAlign.center,
             style: text.bodyMedium?.copyWith(color: c.inkMuted),
           ),

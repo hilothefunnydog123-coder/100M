@@ -80,6 +80,25 @@ void main() {
       );
       expect(e.status, 402);
       expect(e.code, 'upgrade_required');
+
+      // Quotes written by hand never touch the trial: they still send.
+      final byHand = Quote(
+        id: newId('q'),
+        number: 7,
+        createdAt: h.now,
+        updatedAt: h.now,
+        rates: Rates.forTrade(Trade.painting),
+        title: 'Deck stain',
+        items: [
+          const LineItem(
+            id: 'l1',
+            description: 'Stain the deck',
+            quantity: 1,
+            unit: Unit.lot,
+          ).withTotal(95000),
+        ],
+      );
+      expect(await h.sendQuote(dana.account, byHand), isNotEmpty);
       expect(h.drafter.calls, 2);
 
       await h.db.execute(

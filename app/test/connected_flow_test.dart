@@ -91,6 +91,40 @@ void main() {
     expect(find.text('Choose Crew'), findsOne);
   });
 
+  testWidgets('a used-up trial can still write the quote by hand', (
+    tester,
+  ) async {
+    final backend = FakeBackend()
+      ..profile = {
+        'name': 'Brightline Painting',
+        'trades': ['painting'],
+      }
+      ..draftsLeft = 0;
+    final container = await pumpConnectedApp(
+      tester,
+      backend,
+      signedIn: true,
+      settings: testSettings(),
+    );
+    await tapText(tester, 'Living room repaint');
+    await tapText(tester, 'Build quote');
+    expect(find.text("Couldn't build the quote"), findsOne);
+    await tapText(tester, 'Write it yourself instead');
+
+    expect(find.text('Untitled job'), findsOne);
+    final quote = container.read(quotesProvider).single;
+    expect(quote.ai, isNull);
+    expect(quote.photoKeys, hasLength(3));
+    expect(quote.customer.name, isNotEmpty);
+    expect(quote.summary, isNotEmpty, reason: 'the note carries over');
+
+    // It syncs like any other quote, photos included.
+    await tester.pump(const Duration(seconds: 3));
+    await tester.pumpAndSettle();
+    expect(backend.quote(quote.id)?.number, quote.number);
+    expect(backend.photos, hasLength(3));
+  });
+
   testWidgets('settings show the plan, team, and sign out', (tester) async {
     final backend = FakeBackend()
       ..profile = {

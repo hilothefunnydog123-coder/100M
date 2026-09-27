@@ -250,6 +250,8 @@ class _BuildingScreenState extends ConsumerState<BuildingScreen>
                   onPressed: () => Navigator.of(context).pop(),
                   child: const Text('Retake photos'),
                 ),
+                const SizedBox(height: 10),
+                _WriteItYourself(capture: widget.capture, color: onDark),
               ],
               _Phase.failed => [
                 Text(
@@ -286,6 +288,8 @@ class _BuildingScreenState extends ConsumerState<BuildingScreen>
                 else if (_retryable)
                   FilledButton(onPressed: _run, child: const Text('Try again')),
                 const SizedBox(height: 10),
+                _WriteItYourself(capture: widget.capture, color: onDark),
+                const SizedBox(height: 10),
                 OutlinedButton(
                   style: OutlinedButton.styleFrom(
                     foregroundColor: onDark,
@@ -304,6 +308,26 @@ class _BuildingScreenState extends ConsumerState<BuildingScreen>
       ),
     );
   }
+}
+
+/// The way out when the AI can't draft: the same photos, customer, and
+/// note on a quote the contractor writes, which never uses a trial draft.
+class _WriteItYourself extends ConsumerWidget {
+  const _WriteItYourself({required this.capture, required this.color});
+
+  final CaptureResult capture;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) => OutlinedButton.icon(
+    style: OutlinedButton.styleFrom(
+      foregroundColor: color,
+      side: const BorderSide(color: Color(0xFF3A3F47), width: 1.5),
+    ),
+    onPressed: () => writeByHand(context, ref, capture),
+    icon: const Icon(Icons.edit_note_rounded),
+    label: const Text('Write it yourself instead'),
+  );
 }
 
 /// A bright line sweeping down the photo, like a scanner.

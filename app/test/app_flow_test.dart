@@ -196,6 +196,70 @@ void main() {
     expect(app.quotes.single.tiers.map((t) => t.id), ['wash', 'wash_seal']);
   });
 
+  testWidgets('a quote can be written by hand, without the AI', (tester) async {
+    final app = await pumpApp(tester);
+    await tapText(tester, 'New quote');
+    await tapText(tester, 'Write it yourself');
+
+    expect(find.text('Untitled job'), findsOne);
+    await tapText(tester, 'Add line');
+    await tester.enterText(
+      find.widgetWithText(TextField, 'What'),
+      'Stain the deck',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Set your own price'),
+      '950',
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Add line'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Stain the deck'), findsOne);
+    final quote = app.quotes.single;
+    expect(quote.ai, isNull);
+    expect(quote.number, 1001);
+    expect(quote.totals(null).totalCents, 95000);
+    expect(app.client.draftRequests, isEmpty);
+  });
+
+  testWidgets('a price list entry fills a new line in one tap', (tester) async {
+    final settings = testSettings();
+    final app = await pumpApp(
+      tester,
+      settings: settings.copyWith(
+        rates: settings.rates.copyWith(
+          priceList: const [
+            PriceEntry(
+              id: 'p_walls',
+              name: 'Paint walls, 2 coats',
+              unit: Unit.sqFt,
+              unitPriceCents: 150,
+            ),
+          ],
+        ),
+      ),
+    );
+    await tapText(tester, 'New quote');
+    await tapText(tester, 'Write it yourself');
+    await tapText(tester, 'Add line');
+    await tapText(tester, r'Paint walls, 2 coats · $1.50/sq ft');
+    await tester.enterText(find.widgetWithText(TextField, 'Quantity'), '400');
+    await tester.pumpAndSettle();
+    expect(
+      find.text(r'400 sq ft at $1.50 per sq ft, from your price list.'),
+      findsOne,
+    );
+    await tester.tap(find.widgetWithText(FilledButton, 'Add line'));
+    await tester.pumpAndSettle();
+
+    final line = app.quotes.single.items.single;
+    expect(line.description, 'Paint walls, 2 coats');
+    expect(line.priceListId, 'p_walls');
+    expect(line.mode, PricingMode.unitRate);
+    expect(app.quotes.single.totals(null).totalCents, 60000);
+  });
+
   testWidgets('new rates apply to new quotes only', (tester) async {
     final app = await pumpApp(tester);
     await tapText(tester, 'Living room repaint');

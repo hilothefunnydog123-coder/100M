@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:jobwalk_core/jobwalk_core.dart';
 
@@ -82,6 +84,32 @@ class QuoteActions {
         ),
         touch: false,
       );
+
+  /// A blank quote the contractor writes themselves. No AI draft, so it
+  /// never uses one of the trial's drafts. Keeps whatever the walkthrough
+  /// captured: the customer, the photos, and the note as a starting
+  /// summary.
+  Future<Quote> startByHand({
+    Customer customer = const Customer(),
+    String note = '',
+    List<Uint8List> photos = const [],
+  }) async {
+    final number = await ref.read(settingsProvider.notifier).takeNumber();
+    final now = ref.read(clockProvider)();
+    final id = newId('q');
+    final quote = Quote(
+      id: id,
+      number: number,
+      createdAt: now,
+      updatedAt: now,
+      rates: ref.read(settingsProvider).rates,
+      customer: customer,
+      summary: note,
+      photoKeys: [for (var i = 0; i < photos.length; i++) '${id}_$i'],
+    );
+    await _quotes.add(quote, photos: photos);
+    return quote;
+  }
 
   /// A fresh draft copy with no link, for changes after approval.
   Future<Quote> duplicate(Quote quote) async {

@@ -6,7 +6,9 @@ import 'package:jobwalk_core/jobwalk_core.dart';
 
 import '../../services/photos.dart';
 import '../../state/providers.dart';
+import '../../state/quote_actions.dart';
 import '../../theme/colors.dart';
+import '../quote/quote_screen.dart';
 import '../widgets/common.dart';
 import 'building_screen.dart';
 
@@ -25,6 +27,26 @@ class CaptureResult {
 
   /// Set when the photos are one of the bundled sample jobs.
   final SampleJob? sample;
+}
+
+/// Starts a quote from [capture] without the AI and opens it over Home.
+Future<void> writeByHand(
+  BuildContext context,
+  WidgetRef ref,
+  CaptureResult capture,
+) async {
+  final quote = await ref
+      .read(quoteActionsProvider)
+      .startByHand(
+        customer: capture.customer,
+        note: capture.note,
+        photos: [for (final p in capture.photos) p.preview],
+      );
+  if (!context.mounted) return;
+  await Navigator.of(context).pushAndRemoveUntil(
+    MaterialPageRoute<void>(builder: (_) => QuoteScreen(quoteId: quote.id)),
+    (route) => route.isFirst,
+  );
 }
 
 class _Shot {
@@ -118,26 +140,25 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen> {
     if (mounted) setState(() => _sample = job);
   }
 
-  void _build() {
-    final files = [for (final s in _shots) ?s.file];
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => BuildingScreen(
-          capture: CaptureResult(
-            photos: files,
-            note: _note.text.trim(),
-            sample: _sample,
-            customer: Customer(
-              name: _name.text.trim(),
-              phone: _phone.text.trim(),
-              email: _email.text.trim(),
-              address: _address.text.trim(),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+  CaptureResult _capture() => CaptureResult(
+    photos: [for (final s in _shots) ?s.file],
+    note: _note.text.trim(),
+    sample: _sample,
+    customer: Customer(
+      name: _name.text.trim(),
+      phone: _phone.text.trim(),
+      email: _email.text.trim(),
+      address: _address.text.trim(),
+    ),
+  );
+
+  void _build() => Navigator.of(context).push(
+    MaterialPageRoute<void>(
+      builder: (_) => BuildingScreen(capture: _capture()),
+    ),
+  );
+
+  Future<void> _byHand() => writeByHand(context, ref, _capture());
 
   @override
   Widget build(BuildContext context) {
@@ -301,17 +322,28 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen> {
       ),
       bottomNavigationBar: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-          child: FilledButton.icon(
-            onPressed: ready ? _build : null,
-            icon: const Icon(Icons.bolt_rounded),
-            label: Text(
-              _busy > 0
-                  ? 'Preparing photos...'
-                  : _shots.isEmpty
-                  ? 'Add a photo to start'
-                  : 'Build quote',
-            ),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              FilledButton.icon(
+                onPressed: ready ? _build : null,
+                icon: const Icon(Icons.bolt_rounded),
+                label: Text(
+                  _busy > 0
+                      ? 'Preparing photos...'
+                      : _shots.isEmpty
+                      ? 'Add a photo to start'
+                      : 'Build quote',
+                ),
+              ),
+              TextButton.icon(
+                onPressed: _busy > 0 ? null : _byHand,
+                icon: const Icon(Icons.edit_note_rounded),
+                label: const Text('Write it yourself'),
+              ),
+            ],
           ),
         ),
       ),
