@@ -22,15 +22,17 @@ S3 bucket, and optionally Stripe.
 
 ## 3. App
 
-- [ ] Replace the bundle id `app.jobwalk.jobwalk` with your own
-      (iOS project, `android/app/build.gradle.kts`).
-- [ ] Build against the server:
-      `flutter build ipa --dart-define=API_BASE_URL=https://api.jobwalk.app`
-      (and `flutter build appbundle` for Android). The session token is
-      kept in the Keychain / Keystore.
+[STORE.md](STORE.md) has the steps, the listing text, and the privacy
+answers; `store/` has the screenshots and the Play feature graphic.
+
+- [ ] Keep or replace the app id `app.jobwalk.jobwalk` before the first
+      upload; it can't change afterwards.
+- [ ] iOS: pick your team in Xcode, `flutter build ipa` with
+      `--dart-define=API_BASE_URL=...`, and upload to TestFlight.
+- [ ] Android: create the upload key and `android/key.properties`, then
+      `flutter build appbundle` with the same define, for internal testing.
 - [ ] Give app reviewers the review account (`JOBWALK_REVIEW_EMAIL` and
       its fixed code); sign-in is by emailed code only.
-- [ ] Android release signing; Apple team and provisioning.
 - [ ] Privacy policy and terms: the server hosts them at `/privacy` and
       `/terms`, filled in from its own configuration (the AI provider,
       email, storage, and Stripe it uses, the fees, and the trial), and the
@@ -40,8 +42,9 @@ S3 bucket, and optionally Stripe.
       on the production URL, and have a lawyer review them before launch.
       With Gemini, the policy says the paid API is used: the key's Google
       Cloud project needs billing turned on.
-- [ ] Store listings: screenshots of the capture, quote, and customer
-      pages. Camera and photo-library permission text is already set.
+- [ ] Store listings: name, description, keywords, screenshots, and the
+      App Privacy and Data safety forms (STORE.md). Camera and
+      photo-library permission text is already set.
 - [ ] TestFlight and Play internal testing for the beta cohort.
 
 ## 4. Getting paid
@@ -52,7 +55,9 @@ S3 bucket, and optionally Stripe.
       through Jobwalk (1% platform fee plus card processing). A payment
       link from Settings still works for anyone who doesn't connect.
 - [ ] Sell plans on the web (Stripe Checkout), not through in-app
-      purchase, and keep the app free to download.
+      purchase, and keep the app free to download. That's allowed on
+      Apple's US storefront and, after enrolling in Google's external
+      content links program, on Play in the US (STORE.md).
 
 ## 5. Beta operations
 

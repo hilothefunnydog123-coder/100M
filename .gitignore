@@ -13,6 +13,7 @@ build/
 !.env.example
 eval/out*/
 eval/data/
+server/data/
 *.log
 
 # Tooling

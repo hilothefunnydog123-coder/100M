@@ -1,4 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Release builds reach the Jobwalk API; debug builds get this from the
+         debug manifest, which is why its absence only shows up in release. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <application
         android:label="Jobwalk"
         android:name="${applicationName}"
