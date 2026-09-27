@@ -46,6 +46,7 @@ configuration and prints every problem at once (exit code 78).
 | `JOBWALK_AI_PROVIDER` | `claude` | `gemini` or `groq` draft with another provider (see below). |
 | `ANTHROPIC_API_KEY` | | Or `JOBWALK_FAKE_MODEL=true` for sample drafts (not in production). |
 | `JOBWALK_MODEL`, `JOBWALK_EFFORT`, `JOBWALK_MAX_TOKENS`, `JOBWALK_FALLBACKS` | Opus 5.5, `high`, 32000, on | With Gemini: `gemini-3.8-flash`, `high` (`low`, `medium`, or `high`), 32000. With Groq: `qwen/qwen3.8-27b`, `medium` (same choices), 16000. Fallbacks are Claude's. |
+| `JOBWALK_BACKUP_MODELS` | `claude-sonnet-5` with Claude, `gemini-3.7-flash` with Gemini, none with Groq | Models tried in order when the main one is busy or out of quota (see below). A comma-separated list; a name that doesn't start with `claude-` or `gemini-` needs its provider, as in `groq:qwen/qwen3.8-27b`. `none` turns backups off. |
 | `GEMINI_API_KEY`, `GEMINI_BASE_URL` | | Required with `JOBWALK_AI_PROVIDER=gemini`. `GOOGLE_API_KEY` works too. |
 | `GROQ_API_KEY`, `GROQ_BASE_URL` | | Required with `JOBWALK_AI_PROVIDER=groq`. |
 | `JOBWALK_GROQ_FREE_TIER` | off | One photo per draft and a shorter answer, to fit Groq's free tier. |
@@ -88,6 +89,17 @@ about 20 requests a day per Google Cloud project (Flash-Lite models allow
 more), and on the free tier Google may use what you send to improve its
 products, with people reviewing some of it. Use a key from a project with
 billing turned on before customers' photos go through it.
+
+**Backup models.** When the main model's provider turns a draft away
+(busy, a timeout, rate limited, out of quota, or refusing the key), the
+server sends the same draft to the next model in `JOBWALK_BACKUP_MODELS`,
+so a contractor gets a quote instead of "try again". An answer the model
+did give (declining the photos, or output that didn't parse) isn't sent on.
+The default backup is an older model from the same provider, so the key,
+billing, and data terms stay the same. A backup from another provider needs
+that provider's key, and the privacy policy then names that company too.
+Logs show each switch (`event: draft_backup`) and `/metrics` counts drafts
+by the model that wrote them (`jobwalk_draft_models_total`).
 
 `JOBWALK_AI_PROVIDER=groq` drafts with Qwen 3.8 27B on Groq. Groq's limits
 shape what gets sent:

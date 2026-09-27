@@ -27,6 +27,7 @@ Future<void> main() async {
     'provider': config.fakeModel ? 'demo' : config.aiProvider,
     'model': config.draftModel,
     'effort': config.draftEffort,
+    'backups': [for (final b in config.backupModels) b.model],
     'prompt_version': promptVersion,
     'schema': latestSchemaVersion,
     'billing': config.stripeEnabled,

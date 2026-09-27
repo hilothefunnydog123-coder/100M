@@ -10,8 +10,9 @@ import '../model_api.dart';
 import 'accounts.dart';
 import 'plans.dart';
 
-/// What a finished draft cost, for metrics.
-typedef DraftOutcome = ({String outcome, double costUsd, int ms});
+/// What a finished draft cost and which model wrote it (empty when none
+/// did), for metrics.
+typedef DraftOutcome = ({String outcome, double costUsd, int ms, String model});
 
 /// AI drafts with metering, plan limits, and safe retries.
 ///
@@ -166,6 +167,7 @@ class DraftService {
         outcome: usable ? 'ok' : 'unusable',
         costUsd: cost,
         ms: watch.elapsedMilliseconds,
+        model: draft.model,
       ));
       return response;
     } on Object catch (e) {
@@ -182,6 +184,7 @@ class DraftService {
         outcome: error.code,
         costUsd: 0,
         ms: watch.elapsedMilliseconds,
+        model: '',
       ));
       throw error;
     }

@@ -200,6 +200,7 @@ pressure washing.
 | QuoteIQ, Jobber, or Housecall Pro wins the category | Own one trade (painters) first; quote from the crew's own prices; publish accuracy; send jobs into Jobber and QuickBooks instead of fighting them |
 | Churn at small-business rates (3-7% a month) | Annual plans, price memory that gets better with use, crew sync that makes it the team's tool |
 | AI cost rises or latency annoys | The model is a setting; cheaper models chosen by eval; fair-use cap |
+| The AI provider is busy or down | A backup model takes the draft automatically; writing the quote by hand always works |
 | App store rules on subscriptions | Sell plans on the web; iOS in the US storefront (see STORE.md) |
 | One owner, one point of failure | Hosted services, automated tests and deploys, part-time help for support |
 | Personal liability as a sole proprietor | Terms that cap liability; an LLC and business insurance once revenue starts |

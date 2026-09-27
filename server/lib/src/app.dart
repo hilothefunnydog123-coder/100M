@@ -126,6 +126,12 @@ class JobwalkApp {
       'AI drafts by outcome.',
       labels: ['outcome'],
     );
+    final draftModels = metrics.counter(
+      'jobwalk_draft_models_total',
+      'AI drafts by the model that wrote them (a backup when the main '
+          'model was busy).',
+      labels: ['model'],
+    );
     final draftCost = metrics.counter(
       'jobwalk_draft_cost_usd_total',
       'Estimated model spend on drafts.',
@@ -146,6 +152,7 @@ class JobwalkApp {
       log: log,
       onDraft: (d) {
         draftsTotal.inc([d.outcome]);
+        if (d.model.isNotEmpty) draftModels.inc([d.model]);
         draftCost.inc(const [], d.costUsd);
         draftSeconds.observe(d.ms / 1000);
       },

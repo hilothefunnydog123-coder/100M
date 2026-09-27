@@ -229,6 +229,56 @@ void main() {
     expect(c.warnings, isEmpty);
   });
 
+  test('backup models: a same-provider default, a list, or none', () {
+    ServerConfig config(Map<String, String> env) =>
+        ServerConfig.fromEnvironment(env);
+    expect(config({'ANTHROPIC_API_KEY': 'a'}).backupModels, [
+      (provider: 'claude', model: 'claude-sonnet-5'),
+    ]);
+    expect(
+      config({
+        'GEMINI_API_KEY': 'g',
+        'JOBWALK_AI_PROVIDER': 'gemini',
+      }).backupModels,
+      [(provider: 'gemini', model: 'gemini-3.7-flash')],
+    );
+    expect(
+      config({'GROQ_API_KEY': 'q', 'JOBWALK_AI_PROVIDER': 'groq'}).backupModels,
+      isEmpty,
+    );
+    expect(
+      config({
+        'ANTHROPIC_API_KEY': 'a',
+        'JOBWALK_BACKUP_MODELS': 'none',
+      }).backupModels,
+      isEmpty,
+    );
+    // The main model isn't its own backup; names say their provider.
+    expect(
+      config({
+        'GEMINI_API_KEY': 'g',
+        'GROQ_API_KEY': 'q',
+        'JOBWALK_AI_PROVIDER': 'gemini',
+        'JOBWALK_MODEL': 'gemini-3.7-flash',
+        'JOBWALK_BACKUP_MODELS':
+            'gemini-3.7-flash, gemini-3.5-flash, groq:qwen/qwen3.8-27b',
+      }).backupModels,
+      [
+        (provider: 'gemini', model: 'gemini-3.5-flash'),
+        (provider: 'groq', model: 'qwen/qwen3.8-27b'),
+      ],
+    );
+    expect(config({'JOBWALK_FAKE_MODEL': 'true'}).backupModels, isEmpty);
+    expect(
+      problems({
+        'GEMINI_API_KEY': 'g',
+        'JOBWALK_AI_PROVIDER': 'gemini',
+        'JOBWALK_BACKUP_MODELS': 'claude-sonnet-5, qwen/qwen3.8-27b',
+      }),
+      [contains('needs ANTHROPIC_API_KEY'), contains('groq:qwen/qwen3.8-27b')],
+    );
+  });
+
   test('Supabase for the database and photos', () {
     final env = {
       ...production,

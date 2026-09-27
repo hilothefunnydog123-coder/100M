@@ -3,6 +3,7 @@ library;
 
 export 'src/app.dart';
 export 'src/background.dart';
+export 'src/backup_drafter.dart';
 export 'src/claude_client.dart';
 export 'src/common.dart';
 export 'src/config.dart';

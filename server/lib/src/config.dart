@@ -14,6 +14,9 @@ class ConfigError implements Exception {
       'Invalid configuration:\n${problems.map((p) => '  - $p').join('\n')}';
 }
 
+/// A model to draft with, and which provider runs it.
+typedef ModelRef = ({String provider, String model});
+
 /// Everything the server reads from its environment. See `.env.example`
 /// and docs/DEPLOY.md for what each setting does.
 ///
@@ -43,6 +46,7 @@ class ServerConfig {
     this.geminiBaseUrl,
     this.geminiDrafter = const GeminiDrafterConfig(),
     this.fakeModel = false,
+    this.backupModels = const [],
     this.maxConcurrentDrafts = 16,
     this.maxQueuedDrafts = 64,
     this.draftTimeout = const Duration(seconds: 170),
@@ -126,6 +130,17 @@ class ServerConfig {
 
   /// Canned sample drafts instead of a model (development only).
   final bool fakeModel;
+
+  /// Tried in order when the main model's provider turns a draft away
+  /// (busy, rate limited, out of quota). `JOBWALK_BACKUP_MODELS`.
+  final List<ModelRef> backupModels;
+
+  /// Backups used when `JOBWALK_BACKUP_MODELS` isn't set: an older model
+  /// from the same provider, so the key, billing, and terms stay the same.
+  static const defaultBackups = {
+    'claude': 'claude-sonnet-5',
+    'gemini': 'gemini-3.7-flash',
+  };
 
   /// Settings for the provider in use; the others keep their defaults.
   final DrafterConfig drafter;
@@ -332,6 +347,62 @@ class ServerConfig {
       );
     }
     final groqFreeTier = boolVar('JOBWALK_GROQ_FREE_TIER', false);
+
+    // Backups: "provider:model", or a model whose name says its provider.
+    final backupModels = <ModelRef>[];
+    if (!fake) {
+      final keys = {'claude': apiKey, 'gemini': geminiKey, 'groq': groqKey};
+      final mainModel =
+          str('JOBWALK_MODEL') ??
+          switch (provider) {
+            'groq' => const GroqDrafterConfig().model,
+            'gemini' => GeminiDrafterConfig.defaultModel,
+            _ => const DrafterConfig().model,
+          };
+      final setting = str('JOBWALK_BACKUP_MODELS');
+      final entries = switch (setting?.toLowerCase()) {
+        null => [?defaultBackups[provider]],
+        'none' || 'off' => const <String>[],
+        _ => setting!.split(','),
+      };
+      for (final raw in entries) {
+        final entry = raw.trim();
+        if (entry.isEmpty) continue;
+        final colon = entry.indexOf(':');
+        final model = entry.substring(colon + 1).trim();
+        final runBy = colon > 0
+            ? entry.substring(0, colon).trim()
+            : model.startsWith('claude-')
+            ? 'claude'
+            : model.startsWith('gemini-')
+            ? 'gemini'
+            : '';
+        if (!keys.containsKey(runBy) || model.isEmpty) {
+          problems.add(
+            'JOBWALK_BACKUP_MODELS: say which provider runs "$entry", such '
+            'as groq:$model.',
+          );
+          continue;
+        }
+        final ref = (provider: runBy, model: model);
+        if ((runBy == provider && model == mainModel) ||
+            backupModels.contains(ref)) {
+          continue;
+        }
+        if (keys[runBy] == null) {
+          final keyName = switch (runBy) {
+            'groq' => 'GROQ_API_KEY',
+            'gemini' => 'GEMINI_API_KEY',
+            _ => 'ANTHROPIC_API_KEY',
+          };
+          problems.add(
+            'JOBWALK_BACKUP_MODELS uses $model, which needs $keyName.',
+          );
+          continue;
+        }
+        backupModels.add(ref);
+      }
+    }
     final groqPreset = groqFreeTier
         ? GroqDrafterConfig.freeTier
         : const GroqDrafterConfig();
@@ -495,6 +566,7 @@ class ServerConfig {
       groqApiKey: groqKey,
       groqBaseUrl: urlVar('GROQ_BASE_URL'),
       fakeModel: fake,
+      backupModels: backupModels,
       drafter: groq || gemini
           ? const DrafterConfig()
           : DrafterConfig(

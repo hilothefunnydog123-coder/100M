@@ -36,34 +36,7 @@ class Setup {
     }
 
     final client = http.Client();
-    final QuoteDrafter drafter;
-    if (config.fakeModel) {
-      drafter = DemoDrafter();
-    } else if (config.aiProvider == 'groq') {
-      drafter = GroqDrafter(
-        api: GroqClient(
-          apiKey: config.groqApiKey!,
-          baseUrl: config.groqBaseUrl,
-        ),
-        config: config.groqDrafter,
-      );
-    } else if (config.aiProvider == 'gemini') {
-      drafter = GeminiDrafter(
-        api: GeminiClient(
-          apiKey: config.geminiApiKey!,
-          baseUrl: config.geminiBaseUrl,
-        ),
-        config: config.geminiDrafter,
-      );
-    } else {
-      drafter = Drafter(
-        api: ClaudeClient(
-          apiKey: config.anthropicApiKey!,
-          baseUrl: config.anthropicBaseUrl,
-        ),
-        config: config.drafter,
-      );
-    }
+    final drafter = drafterFromConfig(config, log: stdoutLog);
     final EmailSender email = config.emailProvider == 'resend'
         ? ResendEmailSender(
             apiKey: config.resendApiKey!,

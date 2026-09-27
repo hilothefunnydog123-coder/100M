@@ -29,6 +29,37 @@ void main() {
     expect(bare, contains('Our hosting and database providers'));
   });
 
+  test('names a backup AI company, and only another company', () {
+    final page = privacyPage(
+      const LegalInfo(aiProvider: 'gemini', backupProviders: ['claude']),
+    );
+    expect(
+      page,
+      contains(
+        'When Google is too busy to take a draft, the same request goes '
+        'instead to Anthropic, under its commercial terms',
+      ),
+    );
+    expect(page, contains('<b>Anthropic</b> writes AI drafts when Google'));
+    final sameCompany = LegalInfo.fromConfig(
+      ServerConfig.fromEnvironment({
+        'GEMINI_API_KEY': 'g',
+        'JOBWALK_AI_PROVIDER': 'gemini',
+      }),
+    );
+    expect(sameCompany.backupProviders, isEmpty);
+    expect(privacyPage(sameCompany), isNot(contains('too busy')));
+    final mixed = LegalInfo.fromConfig(
+      ServerConfig.fromEnvironment({
+        'GEMINI_API_KEY': 'g',
+        'ANTHROPIC_API_KEY': 'a',
+        'JOBWALK_AI_PROVIDER': 'gemini',
+        'JOBWALK_BACKUP_MODELS': 'gemini-3.7-flash,claude-sonnet-5',
+      }),
+    );
+    expect(mixed.backupProviders, ['claude']);
+  });
+
   test('names the database and photo hosts it can tell', () {
     final supabase = privacyPage(
       const LegalInfo(

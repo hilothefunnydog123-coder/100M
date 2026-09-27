@@ -14,6 +14,7 @@ class LegalInfo {
     this.storage = 'file',
     this.databaseProvider,
     this.storageProvider,
+    this.backupProviders = const [],
     this.payments = false,
     this.platformFeeBps = 100,
     this.processingFeeBps = 290,
@@ -33,6 +34,12 @@ class LegalInfo {
     storage: c.storage,
     databaseProvider: providerFor(Uri.tryParse(c.databaseUrl)?.host),
     storageProvider: c.storage == 's3' ? providerFor(c.s3Endpoint?.host) : null,
+    backupProviders: c.fakeModel
+        ? const []
+        : [
+            for (final p in {for (final b in c.backupModels) b.provider})
+              if (p != c.aiProvider) p,
+          ],
     payments: c.stripeEnabled,
     platformFeeBps: c.platformFeeBps,
     processingFeeBps: c.processingFeeBps,
@@ -59,6 +66,9 @@ class LegalInfo {
   /// can tell from the host; null ones are described without a name.
   final String? databaseProvider;
   final String? storageProvider;
+
+  /// Other AI providers that take drafts when the main one is too busy.
+  final List<String> backupProviders;
   final bool payments;
   final int platformFeeBps;
   final int processingFeeBps;
@@ -68,7 +78,9 @@ class LegalInfo {
   final int sessionDays;
 
   /// The company that runs the model, or null when drafts are samples.
-  String? get aiCompany => switch (aiProvider) {
+  String? get aiCompany => companyOf(aiProvider);
+
+  static String? companyOf(String provider) => switch (provider) {
     'claude' => 'Anthropic',
     'gemini' => 'Google',
     'groq' => 'Groq',
@@ -186,8 +198,21 @@ String privacyPage(LegalInfo info) {
       "This server writes sample drafts and doesn't send your photos to an "
           'AI provider.',
   };
+  // Also fixed text: which other providers step in when the main one is busy.
+  final backups = ai == null ? const <String>[] : info.backupProviders;
+  final backupSentence = backups.isEmpty
+      ? ''
+      : ' When $ai is too busy to take a draft, the same request goes '
+            'instead to ${backups.map((p) => switch (p) {
+              'claude' => "Anthropic, under its commercial terms, which don't allow it to train its models on them",
+              'gemini' => "Google's paid Gemini API, whose terms don't let Google use them to improve its products",
+              _ => "Groq, under Groq's terms for API customers",
+            }).join('; or to ')}.';
   final processors = [
     if (ai != null) '<li><b>$ai</b> writes AI drafts, as described above.</li>',
+    for (final p in backups)
+      '<li><b>${LegalInfo.companyOf(p)}</b> writes AI drafts when $ai is too '
+          'busy.</li>',
     if (info.payments)
       '<li><b>Stripe</b> handles subscriptions and card deposits.</li>',
     if (info.emailProvider == 'resend')
@@ -240,7 +265,7 @@ you send it.</li>
 advertising.</p>
 
 <h2>AI drafts</h2>
-<p>$aiParagraph Quotes you write yourself aren't sent to an AI
+<p>$aiParagraph$backupSentence Quotes you write yourself aren't sent to an AI
 provider.</p>
 
 <h2>Who else processes it</h2>

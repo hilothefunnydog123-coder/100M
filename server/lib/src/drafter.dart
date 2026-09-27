@@ -128,6 +128,7 @@ const _pricesPerMTok = <String, (double, double, double, double)>{
   // cached input is counted at the full input price.
   'qwen/qwen3.8-27b': (0.80, 4, 0.80, 0),
   'gemini-3.8-flash': (0.75, 3.75, 0.75, 0),
+  'gemini-3.7-flash': (0.75, 3.75, 0.75, 0),
 };
 
 class Draft {
