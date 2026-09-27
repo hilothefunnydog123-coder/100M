@@ -6,4 +6,4 @@
 | Within 10% | n/a |
 | Within 20% | n/a |
 | Mean cost per draft | n/a |
-| Latency p50 / p90 | 3633 ms / 60029 ms |
+| Latency p50 / p90 | 155492 ms / 163274 ms |

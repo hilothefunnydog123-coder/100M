@@ -12,8 +12,8 @@
   "within_10_pct": null,
   "within_20_pct": null,
   "mean_cost_usd": null,
-  "latency_p50_ms": 3633,
-  "latency_p90_ms": 60029,
+  "latency_p50_ms": 155492,
+  "latency_p90_ms": 163274,
   "by_trade": {
     "pressure_washing": {
       "cases": 1,
