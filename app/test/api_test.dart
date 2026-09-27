@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:jobwalk/config.dart';
 import 'package:jobwalk/services/api.dart';
+import 'package:jobwalk/services/models.dart';
 import 'package:jobwalk/services/server.dart';
 import 'package:jobwalk_core/jobwalk_core.dart';
 
@@ -27,6 +28,17 @@ http.Response json(int status, Object body) => http.Response(
 );
 
 void main() {
+  test('plan prices come from the server, with defaults', () {
+    final plan = Plan.fromJson({
+      'id': 'trial',
+      'prices': {'pro': 3900, 'crew': 'free', 'enterprise': 0},
+    });
+    expect(plan.priceOf('pro'), 3900);
+    expect(plan.priceOf('crew'), 7900);
+    expect(plan.priceOf('enterprise'), 0);
+    expect(Plan.fromJson({'id': 'trial'}).priceOf('pro'), 3500);
+  });
+
   test('the server that syncs quotes hosts the legal pages', () {
     final config = AppConfig.forServer(Uri.parse('https://api.jobwalk.test'));
     expect(config.demoMode, isFalse);

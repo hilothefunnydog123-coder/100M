@@ -1,10 +1,11 @@
-/// What each plan includes. Prices live in Stripe; this is what the server
-/// enforces.
+/// What each plan includes. Stripe charges the prices; [prices] is what the
+/// landing page and the app show, so the two must match.
 class PlanRules {
   const PlanRules({
     this.trialDrafts = 25,
     this.monthlyDraftCap = 500,
     this.maxUsers = const {'trial': 3, 'pro': 3, 'crew': 15},
+    this.prices = const {'pro': 3500, 'crew': 7900},
   });
 
   /// AI drafts a new business gets before paying. Only usable drafts count.
@@ -13,6 +14,9 @@ class PlanRules {
   /// Fair-use ceiling on paid plans, per rolling 30 days, to bound AI cost.
   final int monthlyDraftCap;
   final Map<String, int> maxUsers;
+
+  /// Monthly price of each paid plan, in cents.
+  final Map<String, int> prices;
 
   int usersFor(String plan) => maxUsers[plan] ?? 1;
 }
@@ -67,5 +71,6 @@ class BusinessPlan {
     'trial_drafts_used': trialDraftsUsed,
     'trial_drafts_left': paid ? null : trialDraftsLeft,
     'max_users': maxUsers,
+    'prices': rules.prices,
   };
 }

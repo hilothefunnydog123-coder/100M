@@ -61,6 +61,7 @@ configuration and prints every problem at once (exit code 78).
 | `STRIPE_PROCESSING_FEE_BPS`, `STRIPE_PROCESSING_FEE_CENTS` | `290`, `30` | Card fees passed through to the contractor (the platform pays Stripe on destination charges). |
 | `JOBWALK_TRIAL_DRAFTS` | `25` | Free AI drafts per business. Unusable drafts don't count. |
 | `JOBWALK_MONTHLY_DRAFT_CAP` | `500` | Fair-use ceiling on paid plans (rolling 30 days). |
+| `JOBWALK_PRO_PRICE`, `JOBWALK_CREW_PRICE` | `35`, `79` | Monthly prices in whole dollars, shown on the landing page and in the app. Stripe charges its own prices, so keep them the same. |
 | `JOBWALK_SESSION_DAYS` | `90` | Sessions slide with use. |
 | `JOBWALK_TRUSTED_PROXIES` | `1` | Load balancers in front of the app; decides which `X-Forwarded-For` entry is the client (recorded in approval audit trails). `0` to use the socket address. |
 | `JOBWALK_CORS_ORIGINS` | `*` | For the web build of the app. |
@@ -133,8 +134,9 @@ and exits cleanly on SIGTERM after finishing in-flight requests.
 
 ## Stripe
 
-1. **Products.** Create Pro and Crew products with monthly prices and set
-   `STRIPE_PRICE_PRO` and `STRIPE_PRICE_CREW`. Turn on the customer portal
+1. **Products.** Create Pro and Crew products with monthly prices ($35 and
+   $79 unless you set `JOBWALK_PRO_PRICE` and `JOBWALK_CREW_PRICE`
+   differently) and set `STRIPE_PRICE_PRO` and `STRIPE_PRICE_CREW`. Turn on the customer portal
    (Settings → Billing → Customer portal) with plan switching and
    cancellation.
 2. **Webhook endpoint** `https://jobwalk.app/webhooks/stripe` for your

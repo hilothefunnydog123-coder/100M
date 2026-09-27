@@ -68,6 +68,8 @@ class ServerConfig {
     this.metricsToken,
     this.trialDrafts = 25,
     this.monthlyDraftCap = 500,
+    this.proPriceCents = 3500,
+    this.crewPriceCents = 7900,
     this.sessionDays = 90,
     this.reviewEmail,
     this.reviewCode,
@@ -178,6 +180,12 @@ class ServerConfig {
 
   final int trialDrafts;
   final int monthlyDraftCap;
+
+  /// Monthly plan prices as shown on the landing page and in the app. Stripe
+  /// charges whatever `STRIPE_PRICE_PRO` and `STRIPE_PRICE_CREW` say, so
+  /// keep them the same.
+  final int proPriceCents;
+  final int crewPriceCents;
   final int sessionDays;
   final String? reviewEmail;
   final String? reviewCode;
@@ -498,6 +506,9 @@ class ServerConfig {
       metricsToken: str('METRICS_TOKEN'),
       trialDrafts: intVar('JOBWALK_TRIAL_DRAFTS', 25),
       monthlyDraftCap: intVar('JOBWALK_MONTHLY_DRAFT_CAP', 500, min: 1),
+      proPriceCents: intVar('JOBWALK_PRO_PRICE', 35, min: 1, max: 10000) * 100,
+      crewPriceCents:
+          intVar('JOBWALK_CREW_PRICE', 79, min: 1, max: 10000) * 100,
       sessionDays: intVar('JOBWALK_SESSION_DAYS', 90, min: 1, max: 400),
       reviewEmail: reviewEmail?.toLowerCase(),
       reviewCode: reviewCode,

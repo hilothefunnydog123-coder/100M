@@ -505,6 +505,7 @@ void main() {
         expect(html, contains('Jobwalk'));
         expect(html, contains('href="/privacy"'));
         expect(html, contains('href="/terms"'));
+        expect(html, contains(r'Then $35 a month per company'));
 
         final joined = await h.form('/waitlist', {
           'email': ' Pat@Example.com ',

@@ -85,6 +85,7 @@ class JobwalkApp {
     final plans = PlanRules(
       trialDrafts: config.trialDrafts,
       monthlyDraftCap: config.monthlyDraftCap,
+      prices: {'pro': config.proPriceCents, 'crew': config.crewPriceCents},
     );
     outbox = Outbox(
       templates: EmailTemplates(appUrl: config.publicUrl.toString()),
@@ -222,6 +223,7 @@ class JobwalkApp {
       model: config.draftModel,
       version: serverVersion,
       legal: LegalInfo.fromConfig(config),
+      proPriceCents: config.proPriceCents,
       metricsToken: config.metricsToken,
       exposeMetrics: !config.isProduction,
       trustedProxies: config.trustedProxies,

@@ -29,6 +29,7 @@ class PublicRoutes {
     required this.model,
     required this.version,
     this.legal = const LegalInfo(),
+    this.proPriceCents = 3500,
     this.metricsToken,
     this.exposeMetrics = false,
     this.trustedProxies = 1,
@@ -53,6 +54,9 @@ class PublicRoutes {
 
   /// Who runs this server, for /privacy and /terms.
   final LegalInfo legal;
+
+  /// The Pro plan's monthly price, for the landing page.
+  final int proPriceCents;
 
   /// With a token, /metrics needs `Authorization: Bearer <token>`.
   final String? metricsToken;
@@ -122,7 +126,10 @@ class PublicRoutes {
 
   Response _landing(Request r) => htmlResponse(
     200,
-    landingPage(joined: r.url.queryParameters['joined'] == '1'),
+    landingPage(
+      joined: r.url.queryParameters['joined'] == '1',
+      proPriceCents: proPriceCents,
+    ),
     headers: {'cache-control': 'public, max-age=300'},
   );
 
@@ -179,7 +186,10 @@ class PublicRoutes {
       if (isForm) {
         return htmlResponse(
           400,
-          landingPage(error: 'Enter a valid email address.'),
+          landingPage(
+            error: 'Enter a valid email address.',
+            proPriceCents: proPriceCents,
+          ),
         );
       }
       throw ApiError.badRequest(

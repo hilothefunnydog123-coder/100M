@@ -56,7 +56,11 @@ class Plan {
     this.trialDraftsIncluded = 25,
     this.trialDraftsLeft,
     this.maxUsers = 3,
+    this.prices = defaultPrices,
   });
+
+  /// What the plans cost when the server doesn't say.
+  static const defaultPrices = {'pro': 3500, 'crew': 7900};
 
   /// `trial`, `pro`, or `crew`.
   final String id;
@@ -67,6 +71,11 @@ class Plan {
   /// Null on paid plans.
   final int? trialDraftsLeft;
   final int maxUsers;
+
+  /// Monthly price of each paid plan, in cents.
+  final Map<String, int> prices;
+
+  int priceOf(String plan) => prices[plan] ?? defaultPrices[plan] ?? 0;
 
   String get label => switch (id) {
     'pro' => 'Pro',
@@ -84,6 +93,11 @@ class Plan {
       trialDraftsIncluded: _int(m['trial_drafts_included'], 25),
       trialDraftsLeft: left is num ? left.toInt() : null,
       maxUsers: _int(m['max_users'], 3),
+      prices: {
+        ...defaultPrices,
+        for (final MapEntry(:key, :value) in _map(m['prices']).entries)
+          if (value is num && value > 0) key: value.toInt(),
+      },
     );
   }
 
@@ -94,6 +108,7 @@ class Plan {
     'trial_drafts_included': trialDraftsIncluded,
     'trial_drafts_left': trialDraftsLeft,
     'max_users': maxUsers,
+    'prices': prices,
   };
 }
 

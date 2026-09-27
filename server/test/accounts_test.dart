@@ -37,6 +37,10 @@ void main() {
         expect(business['setup_complete'], isFalse);
         expect((business['plan'] as Map)['id'], 'trial');
         expect((business['plan'] as Map)['trial_drafts_left'], 25);
+        expect((business['plan'] as Map)['prices'], {
+          'pro': 3500,
+          'crew': 7900,
+        });
 
         // The token is stored hashed.
         final session = await h.db.one('SELECT * FROM sessions');

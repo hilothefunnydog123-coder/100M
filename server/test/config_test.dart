@@ -21,6 +21,23 @@ void main() {
     }
   }
 
+  test('plan prices default to \$35 and \$79 a month', () {
+    final c = ServerConfig.fromEnvironment({'JOBWALK_FAKE_MODEL': 'true'});
+    expect(c.proPriceCents, 3500);
+    expect(c.crewPriceCents, 7900);
+    final custom = ServerConfig.fromEnvironment({
+      'JOBWALK_FAKE_MODEL': 'true',
+      'JOBWALK_PRO_PRICE': '39',
+      'JOBWALK_CREW_PRICE': '99',
+    });
+    expect(custom.proPriceCents, 3900);
+    expect(custom.crewPriceCents, 9900);
+    expect(
+      problems({'JOBWALK_FAKE_MODEL': 'true', 'JOBWALK_PRO_PRICE': '35.50'}),
+      contains(startsWith('JOBWALK_PRO_PRICE must be a whole number')),
+    );
+  });
+
   test('development defaults need only a model choice', () {
     final c = ServerConfig.fromEnvironment({'JOBWALK_FAKE_MODEL': 'true'});
     expect(c.env, 'development');

@@ -502,7 +502,11 @@ footer{color:var(--faint);text-align:center;padding:30px 20px 50px;font-size:14p
 ''';
 
 /// The marketing page at `/`.
-String landingPage({bool joined = false, String? error}) {
+String landingPage({
+  bool joined = false,
+  String? error,
+  int proPriceCents = 3500,
+}) {
   final tradeOptions = [
     for (final t in Trade.values)
       '<option value="${esc(t.id)}">${esc(t.label)}</option>',
@@ -584,8 +588,8 @@ let customers choose up instead of shopping around.</p></div>
 <div>
 <div class="eyebrow">Pricing</div>
 <div class="big">Free in beta</div>
-<p>Then \$79 a month per company with unlimited quotes. Crews who join the
-beta lock in \$49 a month for as long as they stay.</p>
+<p>Then ${Money.format(proPriceCents)} a month per company, with unlimited AI
+quotes. Quotes you write yourself are always free.</p>
 </div>
 <form class="join" method="post" action="/waitlist">
 ${joined ? '<div class="ok" role="status">You\'re on the list. We\'ll text or email you when your invite is ready.</div>' : ''}

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:jobwalk_core/jobwalk_core.dart';
 
 import '../../services/api.dart';
 import '../../services/launcher.dart';
+import '../../services/models.dart';
 import '../../state/session.dart';
 import '../../theme/colors.dart';
 import '../widgets/common.dart';
@@ -45,6 +47,10 @@ class _PlansSheetState extends ConsumerState<_PlansSheet> {
     final c = JobColors.of(context);
     final text = Theme.of(context).textTheme;
     final owner = ref.watch(sessionProvider.select((s) => s.isOwner));
+    final plan =
+        ref.watch(sessionProvider.select((s) => s.account?.business.plan)) ??
+        const Plan();
+    String monthly(String id) => '${Money.format(plan.priceOf(id))} / month';
     return ConstrainedBox(
       constraints: BoxConstraints(
         maxHeight: MediaQuery.sizeOf(context).height * 0.9,
@@ -66,7 +72,7 @@ class _PlansSheetState extends ConsumerState<_PlansSheet> {
                 else ...[
                   _PlanCard(
                     name: 'Pro',
-                    price: r'$79 / month',
+                    price: monthly('pro'),
                     points: const [
                       'Unlimited AI drafts',
                       'Up to 3 people',
@@ -78,7 +84,7 @@ class _PlansSheetState extends ConsumerState<_PlansSheet> {
                   const SizedBox(height: 12),
                   _PlanCard(
                     name: 'Crew',
-                    price: r'$149 / month',
+                    price: monthly('crew'),
                     points: const ['Everything in Pro', 'Up to 15 people'],
                     busy: _busy == 'crew',
                     onChoose: _busy == null ? () => _choose('crew') : null,

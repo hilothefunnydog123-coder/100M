@@ -88,7 +88,9 @@ void main() {
     await tapText(tester, 'See plans');
     expect(find.text('Choose a plan'), findsOne);
     expect(find.text('Choose Pro'), findsOne);
+    expect(find.text(r'$35 / month'), findsOne);
     expect(find.text('Choose Crew'), findsOne);
+    expect(find.text(r'$79 / month'), findsOne);
   });
 
   testWidgets('a used-up trial can still write the quote by hand', (
