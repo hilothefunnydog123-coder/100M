@@ -1,0 +1,199 @@
+{
+  "draft": {
+    "photos_usable": true,
+    "retake_advice": "",
+    "title": "Rear Privacy Fence Replacement",
+    "summary": "Remove and replace approximately 72 linear feet of 6-foot rear privacy fence on the existing line, including one walk gate, with options for pressure-treated pine or Western Red Cedar pickets.",
+    "observations": [
+      "Existing 6-foot dog-ear privacy fence along the rear property line is weathered, with loose, warped, and missing pickets.",
+      "A single pedestrian walk gate is situated within the run, mounted with surface-mount strap hinges.",
+      "The fence consists of approximately 9 standard 8-foot bays spanning the backyard boundary.",
+      "The work area is flat, open grass with clear, unobstructed access for crew and materials."
+    ],
+    "measurements": [
+      {
+        "name": "Fence Run Length",
+        "quantity": 72.0,
+        "unit": "ln_ft",
+        "how": "Counted approximately 9 post bays at 8-foot spacing along the rear boundary visible in Photo 1",
+        "confidence": "medium"
+      },
+      {
+        "name": "Fence Height",
+        "quantity": 6.0,
+        "unit": "ln_ft",
+        "how": "Standard residential dog-ear privacy picket height referenced against adjacent single-story eaves",
+        "confidence": "high"
+      },
+      {
+        "name": "Post Count",
+        "quantity": 10.0,
+        "unit": "each",
+        "how": "Counted line posts and gate posts along the run at 8-foot maximum spacing",
+        "confidence": "medium"
+      },
+      {
+        "name": "Walk Gate",
+        "quantity": 1.0,
+        "unit": "each",
+        "how": "Standard single pedestrian gate opening visible in Photos 2 and 3",
+        "confidence": "high"
+      }
+    ],
+    "tiers": [
+      {
+        "id": "pine",
+        "name": "Treated Pine",
+        "summary": "Full replacement using pressure-treated pine rails and pickets for standard durability and budget value.",
+        "recommended": false
+      },
+      {
+        "id": "cedar",
+        "name": "Western Red Cedar",
+        "summary": "Full replacement using Western Red Cedar pickets for superior dimensional stability, insect resistance, and longevity.",
+        "recommended": true
+      }
+    ],
+    "items": [
+      {
+        "section": "Tear-Out",
+        "description": "Remove and dispose of existing fence and gate",
+        "detail": "Dismantle existing 6-foot wood fence and walk gate, extract existing posts and concrete footings, and haul all debris off site.",
+        "quantity": 72.0,
+        "unit": "ln_ft",
+        "price_list_id": "",
+        "labor_hours": 8.0,
+        "material_cost": 0.0,
+        "other_cost": 175.0,
+        "tiers": [],
+        "basis": "72 linear foot fence run"
+      },
+      {
+        "section": "Posts",
+        "description": "Set pressure-treated posts in concrete",
+        "detail": "Dig post holes to 24-inch depth and set 10 pressure-treated 4x4x8 posts in fast-setting concrete (2 bags per hole), plumbed and aligned on existing line.",
+        "quantity": 10.0,
+        "unit": "each",
+        "price_list_id": "",
+        "labor_hours": 6.5,
+        "material_cost": 310.0,
+        "other_cost": 0.0,
+        "tiers": [],
+        "basis": "10 posts at 8-foot spacing plus gate posts"
+      },
+      {
+        "section": "Framing & Pickets",
+        "description": "Treated pine framing and pickets",
+        "detail": "Install three runs of 2x4 pressure-treated rails and 5/8 in x 5-1/2 in x 6 ft pressure-treated pine dog-ear pickets with exterior-grade ring-shank fasteners.",
+        "quantity": 72.0,
+        "unit": "ln_ft",
+        "price_list_id": "",
+        "labor_hours": 13.5,
+        "material_cost": 650.0,
+        "other_cost": 0.0,
+        "tiers": [
+          "pine"
+        ],
+        "basis": "72 linear feet of 6 ft fence"
+      },
+      {
+        "section": "Framing & Pickets",
+        "description": "Cedar pickets with treated rails",
+        "detail": "Install three runs of 2x4 pressure-treated rails and 5/8 in x 5-1/2 in x 6 ft Western Red Cedar dog-ear pickets with exterior-grade ring-shank fasteners.",
+        "quantity": 72.0,
+        "unit": "ln_ft",
+        "price_list_id": "",
+        "labor_hours": 13.5,
+        "material_cost": 1100.0,
+        "other_cost": 0.0,
+        "tiers": [
+          "cedar"
+        ],
+        "basis": "72 linear feet of 6 ft fence"
+      },
+      {
+        "section": "Gate",
+        "description": "Build and hang treated pine walk gate",
+        "detail": "Construct 4 ft wide by 6 ft tall pedestrian gate with diagonal brace, treated pine pickets, heavy-duty black strap hinges, and gravity latch.",
+        "quantity": 1.0,
+        "unit": "each",
+        "price_list_id": "",
+        "labor_hours": 3.0,
+        "material_cost": 110.0,
+        "other_cost": 0.0,
+        "tiers": [
+          "pine"
+        ],
+        "basis": "Single 4 ft pedestrian gate"
+      },
+      {
+        "section": "Gate",
+        "description": "Build and hang cedar walk gate",
+        "detail": "Construct 4 ft wide by 6 ft tall pedestrian gate with diagonal brace, Western Red Cedar pickets, heavy-duty black strap hinges, and gravity latch.",
+        "quantity": 1.0,
+        "unit": "each",
+        "price_list_id": "",
+        "labor_hours": 3.0,
+        "material_cost": 140.0,
+        "other_cost": 0.0,
+        "tiers": [
+          "cedar"
+        ],
+        "basis": "Single 4 ft pedestrian gate"
+      }
+    ],
+    "assumptions": [
+      {
+        "text": "Property boundary follows the existing fence line precisely.",
+        "impact": "high"
+      },
+      {
+        "text": "Public utilities will be cleared by Texas 811 prior to digging and do not run through post hole locations.",
+        "impact": "high"
+      },
+      {
+        "text": "Post hole excavation will not encounter dense solid rock requiring heavy pneumatic equipment.",
+        "impact": "medium"
+      },
+      {
+        "text": "Electricity and outdoor water sources will be accessible on site during work hours.",
+        "impact": "low"
+      },
+      {
+        "text": "Homeowner will clear pet waste and movable obstacles from the fence corridor prior to crew arrival.",
+        "impact": "low"
+      }
+    ],
+    "exclusions": [
+      "Boundary surveying or property line dispute resolution.",
+      "Applying stain, paint, or chemical sealers to new lumber.",
+      "Replacement of side fence lines or non-contiguous fence runs.",
+      "Major rock or root excavation requiring specialty machinery.",
+      "Lawn re-seeding or sod repair along the active construction path."
+    ],
+    "crew": {
+      "people": 2,
+      "days": 2.0
+    },
+    "customer_message": "Thanks for having us out to look at your fence. We have put together options to replace the full rear run and walk gate along your existing line using either pressure-treated pine or Western Red Cedar. Please review the scope and let us know which material option you prefer so we can get your project scheduled.",
+    "confidence": "medium",
+    "confidence_note": "Total run length is estimated at 72 linear feet based on visible 8-foot panel sections and post tops from the walkthrough photos. Final measurements will be verified on site before framing materials are delivered."
+  },
+  "model": "gemini-3.8-flash",
+  "demo": false,
+  "prompt_version": "2026-09-25.1",
+  "stats": {
+    "attempts": 1,
+    "refusals": 0,
+    "malformed": 0,
+    "input_tokens": 5395,
+    "output_tokens": 8122,
+    "cache_read_tokens": 0,
+    "cache_write_tokens": 0,
+    "models": [
+      "gemini-3.8-flash"
+    ],
+    "latency_ms": 108477,
+    "estimated_cost_usd": 0.03450375
+  }
+}
