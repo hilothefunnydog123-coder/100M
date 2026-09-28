@@ -83,10 +83,10 @@ QuoteDrafter drafterFromConfig(ServerConfig config, {LogSink? log}) {
 QuoteDrafter _drafterFor(ServerConfig c, ModelRef m) {
   final sameProvider = m.provider == c.aiProvider;
   return switch (m.provider) {
+    // Holds the free-tier limits even when Groq is only a backup.
     'groq' => GroqDrafter(
       api: GroqClient(apiKey: c.groqApiKey!, baseUrl: c.groqBaseUrl),
-      config: (sameProvider ? c.groqDrafter : const GroqDrafterConfig())
-          .copyWith(model: m.model),
+      config: c.groqDrafter.copyWith(model: m.model),
     ),
     'gemini' => GeminiDrafter(
       api: GeminiClient(apiKey: c.geminiApiKey!, baseUrl: c.geminiBaseUrl),

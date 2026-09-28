@@ -155,5 +155,22 @@ void main() {
     final sonnet = mixed.models.last.drafter as Drafter;
     expect(sonnet.config.model, 'claude-sonnet-5');
     expect(sonnet.config.useFallbacks, isFalse);
+
+    final free =
+        drafterFromConfig(
+              ServerConfig.fromEnvironment({
+                ...base,
+                'GROQ_API_KEY': 'q',
+                'JOBWALK_FREE_TIER': 'true',
+              }),
+            )
+            as BackupDrafter;
+    expect(free.models.map((m) => m.model), [
+      'gemini-3.8-flash',
+      'gemini-3.7-flash',
+      'gemini-3.5-flash-lite',
+      'qwen/qwen3.8-27b',
+    ]);
+    expect((free.models.last.drafter as GroqDrafter).config.maxPhotos, 1);
   });
 }

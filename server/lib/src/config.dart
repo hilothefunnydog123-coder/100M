@@ -46,6 +46,7 @@ class ServerConfig {
     this.geminiBaseUrl,
     this.geminiDrafter = const GeminiDrafterConfig(),
     this.fakeModel = false,
+    this.freeTier = false,
     this.backupModels = const [],
     this.maxConcurrentDrafts = 16,
     this.maxQueuedDrafts = 64,
@@ -131,6 +132,11 @@ class ServerConfig {
   /// Canned sample drafts instead of a model (development only).
   final bool fakeModel;
 
+  /// Drafting on free AI plans (`JOBWALK_FREE_TIER`): Groq's free-tier
+  /// limits apply, Gemini's free models back each other up, and the privacy
+  /// policy says Google may use what its free tier is sent.
+  final bool freeTier;
+
   /// Tried in order when the main model's provider turns a draft away
   /// (busy, rate limited, out of quota). `JOBWALK_BACKUP_MODELS`.
   final List<ModelRef> backupModels;
@@ -141,6 +147,12 @@ class ServerConfig {
     'claude': 'claude-sonnet-5',
     'gemini': 'gemini-3.7-flash',
   };
+
+  /// Gemini backups on the free tier, each with its own daily allowance:
+  /// another Flash model, then Flash-Lite (hundreds a day). Groq's free
+  /// model follows when there's a key for it, since Google's models tend
+  /// to be busy at the same time.
+  static const freeTierBackups = ['gemini-3.7-flash', 'gemini-3.5-flash-lite'];
 
   /// Settings for the provider in use; the others keep their defaults.
   final DrafterConfig drafter;
@@ -346,7 +358,10 @@ class ServerConfig {
         'canned sample drafts.',
       );
     }
-    final groqFreeTier = boolVar('JOBWALK_GROQ_FREE_TIER', false);
+    // Free AI plans have daily limits and busy spells, and Google may use
+    // what its free tier is sent. Fine for a beta, not for paying customers.
+    final freeTier = boolVar('JOBWALK_FREE_TIER', false);
+    final groqFreeTier = freeTier || boolVar('JOBWALK_GROQ_FREE_TIER', false);
 
     // Backups: "provider:model", or a model whose name says its provider.
     final backupModels = <ModelRef>[];
@@ -361,6 +376,10 @@ class ServerConfig {
           };
       final setting = str('JOBWALK_BACKUP_MODELS');
       final entries = switch (setting?.toLowerCase()) {
+        null when freeTier && provider == 'gemini' => [
+          ...freeTierBackups,
+          if (groqKey != null) 'groq:${GroqDrafterConfig.defaultModel}',
+        ],
         null => [?defaultBackups[provider]],
         'none' || 'off' => const <String>[],
         _ => setting!.split(','),
@@ -406,7 +425,13 @@ class ServerConfig {
     final groqPreset = groqFreeTier
         ? GroqDrafterConfig.freeTier
         : const GroqDrafterConfig();
-    if (groq && groqFreeTier && production) {
+    if (freeTier && production) {
+      warnings.add(
+        'JOBWALK_FREE_TIER: drafts use free AI plans, with daily limits and '
+        'busy spells, and Google may use what it is sent to improve its '
+        'products. Fine for a beta; move to paid plans for paying customers.',
+      );
+    } else if (groq && groqFreeTier && production) {
       warnings.add(
         "JOBWALK_GROQ_FREE_TIER sends one photo per draft, and Groq's free "
         'tier allows roughly 25 to 30 drafts a day across all users.',
@@ -566,6 +591,7 @@ class ServerConfig {
       groqApiKey: groqKey,
       groqBaseUrl: urlVar('GROQ_BASE_URL'),
       fakeModel: fake,
+      freeTier: freeTier,
       backupModels: backupModels,
       drafter: groq || gemini
           ? const DrafterConfig()
@@ -585,7 +611,7 @@ class ServerConfig {
                 min: 1000,
               ),
             )
-          : const GroqDrafterConfig(),
+          : groqPreset,
       geminiApiKey: geminiKey,
       geminiBaseUrl: urlVar('GEMINI_BASE_URL'),
       geminiDrafter: gemini

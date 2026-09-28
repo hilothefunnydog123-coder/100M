@@ -279,6 +279,38 @@ void main() {
     );
   });
 
+  test('free AI plans: Gemini models back each other up, then Groq', () {
+    const free = {
+      'GEMINI_API_KEY': 'g',
+      'JOBWALK_AI_PROVIDER': 'gemini',
+      'JOBWALK_FREE_TIER': 'true',
+    };
+    expect(ServerConfig.fromEnvironment(free).backupModels, [
+      (provider: 'gemini', model: 'gemini-3.7-flash'),
+      (provider: 'gemini', model: 'gemini-3.5-flash-lite'),
+    ]);
+    final withGroq = ServerConfig.fromEnvironment({
+      ...free,
+      'GROQ_API_KEY': 'q',
+    });
+    expect(withGroq.backupModels.last, (
+      provider: 'groq',
+      model: 'qwen/qwen3.8-27b',
+    ));
+    // Groq keeps its free-tier limits as a backup: one photo, a small answer.
+    expect(withGroq.groqDrafter.maxPhotos, 1);
+    expect(withGroq.groqDrafter.requestTokenLimit, 8000);
+    expect(
+      ServerConfig.fromEnvironment({
+        ...production,
+        ...free,
+        'JOBWALK_LEGAL_NAME': 'Jobwalk',
+        'JOBWALK_GOVERNING_LAW': 'Texas',
+      }).warnings,
+      contains(contains('JOBWALK_FREE_TIER')),
+    );
+  });
+
   test('Supabase for the database and photos', () {
     final env = {
       ...production,

@@ -10,6 +10,7 @@ class LegalInfo {
     this.address = '',
     this.governingLaw = '',
     this.aiProvider = 'claude',
+    this.aiFreeTier = false,
     this.emailProvider = 'log',
     this.storage = 'file',
     this.databaseProvider,
@@ -30,6 +31,7 @@ class LegalInfo {
     address: c.legalAddress,
     governingLaw: c.governingLaw,
     aiProvider: c.fakeModel ? 'demo' : c.aiProvider,
+    aiFreeTier: c.freeTier,
     emailProvider: c.emailProvider,
     storage: c.storage,
     databaseProvider: providerFor(Uri.tryParse(c.databaseUrl)?.host),
@@ -59,6 +61,9 @@ class LegalInfo {
 
   /// `claude`, `gemini`, `groq`, or `demo` (sample drafts, no provider).
   final String aiProvider;
+
+  /// Drafting on free AI plans, where Google may use what it's sent.
+  final bool aiFreeTier;
   final String emailProvider;
   final String storage;
 
@@ -185,6 +190,13 @@ String privacyPage(LegalInfo info) {
           'model that writes it. Anthropic processes them under its '
           "commercial terms, which don't allow it to train its models on "
           'them.',
+    'gemini' when info.aiFreeTier =>
+      'When you ask for a draft, we send the job photos, your note, and your '
+          'business details and rates to Google, which runs the Gemini model '
+          "that writes it. During the beta we use Google's free Gemini API: "
+          'under its terms Google may use them to improve its products, and '
+          'people at Google may review them, so keep people and anything '
+          'private out of job photos.',
     'gemini' =>
       'When you ask for a draft, we send the job photos, your note, and your '
           'business details and rates to Google, which runs the Gemini model '
@@ -205,6 +217,7 @@ String privacyPage(LegalInfo info) {
       : ' When $ai is too busy to take a draft, the same request goes '
             'instead to ${backups.map((p) => switch (p) {
               'claude' => "Anthropic, under its commercial terms, which don't allow it to train its models on them",
+              'gemini' when info.aiFreeTier => "Google's free Gemini API, under whose terms Google may use them to improve its products",
               'gemini' => "Google's paid Gemini API, whose terms don't let Google use them to improve its products",
               _ => "Groq, under Groq's terms for API customers",
             }).join('; or to ')}.';

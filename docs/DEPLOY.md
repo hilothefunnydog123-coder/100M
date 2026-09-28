@@ -50,6 +50,7 @@ configuration and prints every problem at once (exit code 78).
 | `GEMINI_API_KEY`, `GEMINI_BASE_URL` | | Required with `JOBWALK_AI_PROVIDER=gemini`. `GOOGLE_API_KEY` works too. |
 | `GROQ_API_KEY`, `GROQ_BASE_URL` | | Required with `JOBWALK_AI_PROVIDER=groq`. |
 | `JOBWALK_GROQ_FREE_TIER` | off | One photo per draft and a shorter answer, to fit Groq's free tier. |
+| `JOBWALK_FREE_TIER` | off | Free AI plans for a beta (see below). Includes `JOBWALK_GROQ_FREE_TIER`. |
 | `JOBWALK_MAX_CONCURRENT`, `JOBWALK_MAX_QUEUED` | 16, 64 | Drafts in flight per instance and the queue behind them; beyond that, 503 with Retry-After. |
 | `JOBWALK_DRAFT_TIMEOUT_SECONDS` | 170 | |
 | `EMAIL_PROVIDER` | `log` | `resend` in production (`log` prints sign-in codes). |
@@ -100,6 +101,21 @@ billing, and data terms stay the same. A backup from another provider needs
 that provider's key, and the privacy policy then names that company too.
 Logs show each switch (`event: draft_backup`) and `/metrics` counts drafts
 by the model that wrote them (`jobwalk_draft_models_total`).
+
+**Free AI plans (for a beta).** With `JOBWALK_AI_PROVIDER=gemini` and
+`JOBWALK_FREE_TIER=true`, drafts run on free plans with no card on file:
+
+- Gemini 3.8 Flash first, then Gemini 3.7 Flash and 3.5 Flash-Lite, each
+  with its own daily allowance (about 20, 20, and 500 requests).
+- With a free Groq key (`GROQ_API_KEY`, no card), Groq's Qwen model last.
+  It runs on another company's servers, so it answers when Google's are all
+  busy, which happens often. Its free tier sees one photo per draft and
+  allows roughly 25 to 30 drafts a day.
+- When every model is busy, the app offers to write the quote by hand.
+
+The privacy policy then says Google may use what its free tier is sent, and
+that people at Google may review it, so keep people and anything private out
+of job photos. Move to paid plans before charging customers.
 
 `JOBWALK_AI_PROVIDER=groq` drafts with Qwen 3.8 27B on Groq. Groq's limits
 shape what gets sent:

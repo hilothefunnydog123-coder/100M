@@ -29,6 +29,30 @@ void main() {
     expect(bare, contains('Our hosting and database providers'));
   });
 
+  test("says when Gemini's free tier is in use", () {
+    final free = privacyPage(
+      const LegalInfo(
+        aiProvider: 'gemini',
+        aiFreeTier: true,
+        backupProviders: ['groq'],
+      ),
+    );
+    expect(free, contains("During the beta we use Google's free Gemini API"));
+    expect(free, contains('people at Google may review them'));
+    expect(free, isNot(contains("Google's paid Gemini API")));
+    expect(free, contains("Groq, under Groq's terms for API customers"));
+    expect(
+      LegalInfo.fromConfig(
+        ServerConfig.fromEnvironment({
+          'GEMINI_API_KEY': 'g',
+          'JOBWALK_AI_PROVIDER': 'gemini',
+          'JOBWALK_FREE_TIER': 'true',
+        }),
+      ).aiFreeTier,
+      isTrue,
+    );
+  });
+
   test('names a backup AI company, and only another company', () {
     final page = privacyPage(
       const LegalInfo(aiProvider: 'gemini', backupProviders: ['claude']),
