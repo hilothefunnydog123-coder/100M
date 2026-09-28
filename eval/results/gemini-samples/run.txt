@@ -75,3 +75,20 @@ Please retry in 54.750150057s.))
 | Latency p50 / p90 | 109402 ms / 174072 ms |
 
 The fence drafted; the other two hit the free tier's daily limit (20 requests), used up by runs 3 and 4.
+
+
+## Run 5 (2026-09-28 16:02 UTC, after the daily reset; results.jsonl/summary.* left from run 4)
+fence: failed: DraftFailed: The model request failed. (GeminiApiException(503 UNAVAILABLE: This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.))
+living-room: failed: DraftFailed: The model request failed. (GeminiApiException(503 UNAVAILABLE: This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.))
+driveway: failed: DraftFailed: The model request failed. (GeminiApiException(503 UNAVAILABLE: This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.))
+| Metric | Value |
+|---|---|
+| Cases | 3 (0 scored, 0 unusable, 3 failed) |
+| Median abs. error of total | n/a |
+| Median bias (+ is high) | n/a |
+| Within 10% | n/a |
+| Within 20% | n/a |
+| Mean cost per draft | n/a |
+| Latency p50 / p90 | 151707 ms / 154116 ms |
+
+Every attempt got 503 UNAVAILABLE (high demand).
